@@ -14,7 +14,7 @@ const transactionSchema = new Schema({
   amount:Number,
   bankName:String,
   chequeNo:Number,
-  createdDate:Date,
+  createdDate:String,
   others: Boolean,
 });
 
