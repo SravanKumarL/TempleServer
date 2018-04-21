@@ -19,7 +19,7 @@ exports.signup = function (req, res, next) {
     if (err) { return next(err); }
     // If a user with username does exist
     if (existingUser) {
-      res.status(422).send({ error: 'username is in use' });
+      return res.status(422).send({ error: 'username is in use' });
     }
   });
   // If a user with username does not exist, create and save user record
@@ -31,7 +31,7 @@ exports.signup = function (req, res, next) {
   user.save(function (err) {
     if (err) { return next(err); }
     //Respond to request indicating the user was created
-    res.json({
+    return res.json({
       token: tokenForUser(user),
       user: user.username,
       role: user.role
@@ -42,7 +42,7 @@ exports.signup = function (req, res, next) {
 exports.signin = function (req, res, next) {
   // User has already username and password authorized
   // We need to give them a token
-  res.send({ 
+  return res.send({ 
     token: tokenForUser(req.user),
     expiresIn: '3600',
     user: req.user.username,

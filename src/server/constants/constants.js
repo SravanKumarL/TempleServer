@@ -9,7 +9,8 @@ const constants = {
     Schema: 'schema',
     Accounts: 'Accounts',
     Pooja: 'Pooja',
-    Management: 'Management'
+    Management: 'Management',
+    Users:'users'
 }
 const ManagementReport = ['pooja', 'amount'];
 const PoojaReport = ['names', 'gothram', 'nakshatram'];
