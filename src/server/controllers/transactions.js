@@ -67,28 +67,31 @@ exports.getTransactions = function (req, res, next) {
 
 exports.searchTransactions = function (req, res, next) {
   const searchValue = req.body.searchValue;
-  let searchObject = { phoneNumber: searchValue };
   if (searchValue.length === 0) {
     return res.json({ transactions: [] });
   }
-  if (isNaN(Number(searchValue))) {
-    const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
-    searchObject = { names: { $regex: regex } };
+  // if (isNaN(Number(searchValue))) {
+  //   const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
+  //   searchObject = { names: { $regex: regex } };
+  // }
+  const numericalSearchVal = Number(searchValue);
+  if (isNaN(numericalSearchVal)) {
+    // const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
+    searchObject = { names: { $regex: `(?i)${searchValue}` } };
+    Transaction.find(searchObject, (err, transactions) => {
+      if (err) {
+        return res.status(500).send(err);
+      }
+      return res.json({ transactions });
+    });
   }
-  // const numericalSearchVal = Number(searchValue);
-  // if (isNaN(numericalSearchVal)) {
-  //   // const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
-  //   searchObject = { names: { $regex: `/(?i)${searchValue}/` } };
-  // }
-  // else {
-  //   searchObject = { phoneNumber: { $regex: `/${numericalSearchVal}/` } };
-  // }
-  Transaction.find(searchObject, (err, transactions) => {
-    if (err) {
-      res.status(500).send(err);
-    }
-    res.json({ transactions });
-  });
+  else {
+    Transaction.find().exec((error, transactions) => {
+      if (error) return res.json({ error });
+      transactions= transactions.filter(transaction=> transaction.phoneNumber.toString().indexOf(searchValue) !== -1)
+      return res.json({ transactions });
+    });
+  }
 }
 
 exports.getReports = function (req, res, next) {
