@@ -86,11 +86,19 @@ exports.searchTransactions = function (req, res, next) {
     });
   }
   else {
-    Transaction.find().exec((error, transactions) => {
-      if (error) return res.json({ error });
-      transactions= transactions.filter(transaction=> transaction.phoneNumber.toString().indexOf(searchValue) !== -1)
+    //{ $where: `/${searchValue}/.test(this.phoneNumber)` } This also works but has a chance of SQL injection
+    Transaction.find({ $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` }).
+    exec((err, transactions) => {
+      if (err) {
+        return res.status(500).send(err);
+      }
       return res.json({ transactions });
     });
+    // Transaction.find().exec((error, transactions) => {
+    //   if (error) return res.json({ error });
+    //   transactions= transactions.filter(transaction=> transaction.phoneNumber.toString().indexOf(searchValue) !== -1)
+    //   return res.json({ transactions });
+    // });
   }
 }
 
