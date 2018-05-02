@@ -1,6 +1,10 @@
+const Users = require('../models/user');
+const User = Users.User;
+const Authenticate = require('./authentication');
+const hashPassword = Users.hashPassword;
 const { Constants } = require('../constants/constants');
+const signUp = Authenticate.signup;
 const Pooja = require('../models/poojaDetails');
-const User= require('../models/user');
 const _ = require('lodash');
 const populateModel = function (model, reqBody, id) {
     if (!checkReqBody(model, reqBody))
@@ -22,6 +26,7 @@ const checkReqBody = function (model, reqBody) {
     return modelProps.filter(prop => reqBody.hasOwnProperty(prop)).length === modelProps.length;
 }
 const getModelProps = (model) => Object.getOwnPropertyNames(model.schema.obj);
+const getSearchObj = (collection, reqParams) => (collection === Constants.Users ? { username: reqParams.username } : { id: reqParams.id });
 exports.entity = function (collection) {
     let model = getModel(collection);
     return {
@@ -65,18 +70,27 @@ exports.entity = function (collection) {
             //     record.remove();
             //     res.status(200).send(`${collection.slice(0, collection.length - 1)} was deleted successfully`);
             // });
-            model.remove({ id: req.params.id }, function (error) {
+            model.remove(getSearchObj(collection, req.params), function (error) {
                 if (error)
                     return res.json({ error });
+                return res.json({ message: `${collection.slice(0, collection.length - 1)} was deleted successfully` });
             });
-            return res.json({ message: `${collection.slice(0, collection.length - 1)} was deleted successfully` });
         },
         update: function (req, res, next) {
-            model.findOneAndUpdate({ id: req.params.id }, req.body, function (error) {
+            let updateBody = req.body;
+            if (collection === Constants.Users && updateBody.hasOwnProperty('password')) {
+                let error = '';
+                const errCb = err => error = err;
+                hashPassword(req.body.password, hash => updateBody.password = hash, errCb);
+                if (error !== '') return res.json({ error });
+            }
+            setTimeout(()=>{
+                model.findOneAndUpdate(getSearchObj(collection, req.params), updateBody, function (error) {
                 if (error)
                     return res.json({ error });
-            });
-            return res.json({ message: `${collection.slice(0, collection.length - 1)} was updated successfully` });
+                });
+                return res.json({ message: `${collection.slice(0, collection.length - 1)} was updated successfully` });
+            },100);
         },
         schema: function (req, res, next) {
             return res.status(200).send(getModelProps(model).filter(prop => prop !== 'id'));

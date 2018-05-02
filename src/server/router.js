@@ -34,6 +34,6 @@ module.exports = function (app) {
   app.post(`/${Constants.Users}/${Constants.add}`, requireAuth, User.add);
   app.get(`/${Constants.Users}`, requireAuth, User.get);
   app.get(`/${Constants.Users}/${Constants.Schema}`, requireAuth, User.schema);
-  app.delete(`/${Constants.Users}/:id`, requireAuth, User.delete);
-  app.put(`/${Constants.Users}/:id`, requireAuth, User.update);
+  app.delete(`/${Constants.Users}/:username`, requireAuth, User.delete);
+  app.put(`/${Constants.Users}/:username`, requireAuth, User.update);
 }

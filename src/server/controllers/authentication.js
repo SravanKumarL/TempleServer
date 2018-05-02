@@ -1,5 +1,6 @@
 const jwt = require('jwt-simple');
-const User = require('../models/user');
+const Users = require('../models/user');
+const User = Users.User;
 const config = require('../../config');
 
 function tokenForUser(user) {
@@ -42,10 +43,10 @@ exports.signup = function (req, res, next) {
 exports.signin = function (req, res, next) {
   // User has already username and password authorized
   // We need to give them a token
-  return res.send({ 
+  return res.send({
     token: tokenForUser(req.user),
     expiresIn: '3600',
     user: req.user.username,
     role: req.user.role
- });
+  });
 }
