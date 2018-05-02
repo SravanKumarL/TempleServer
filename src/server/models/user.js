@@ -14,20 +14,24 @@ const userSchema = new Schema({
 userSchema.pre('save', function (next) {
   // get access to the user model
   const user = this;
-  hashPassword(user.password, hash => user.password = hash, next);
+  hashPassword(user.password).then(hash => {
+    user.password = hash;
+    next();
+  }).catch(error=>next(error));
 })
 
-const hashPassword = (password, hashCb, next) => {
-  // Generate a salt, then run call back
-  bcrypt.genSalt(10, function (err, salt) {
-    if (err) { return next(err); }
-    //hash (encrypt) password using the salt
-    bcrypt.hash(password, salt, null, function (err, hash) {
-      if (err) { return next(err) }
-      // Override plain text password with encrypted password
-      hashCb(hash);
-      next();
-    })
+const hashPassword = (password) => {
+  return new Promise((resolve,reject)=>{
+    // Generate a salt, then run call back
+    bcrypt.genSalt(10, function (err, salt) {
+      if (err) { return reject(err); }
+      //hash (encrypt) password using the salt
+      bcrypt.hash(password, salt, null, function (err, hash) {
+        if (err) { return reject(err) }
+        // Override plain text password with encrypted password
+        resolve(hash);
+      })
+    });
   });
 }
 exports.hashPassword = hashPassword;

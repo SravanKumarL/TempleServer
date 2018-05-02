@@ -44,11 +44,13 @@ exports.entity = function (collection) {
                     let modelProps = getModelProps(model);
                     return res.status(422).send({ error: `You must provide ${modelProps.slice(0, modelProps.length - 1).join(', ')} and ${modelProps[modelProps.length - 1]}` });
                 }
+                const entitySelf = entity;
                 //save it to the db
                 entity.save(function (error) {
+                    const change = _.pick(entitySelf, req.body.keys);
                     if (error) { return res.json({ error }); }
                     //Respond to request indicating the pooja was created
-                    return res.json({ message: `${collection.slice(0, collection.length - 1)} was added successfully` });
+                    return res.json({ message: `${collection.slice(0, collection.length - 1)} was added successfully`, change });
                 });
             });
         },
@@ -78,19 +80,22 @@ exports.entity = function (collection) {
         },
         update: function (req, res, next) {
             let updateBody = req.body;
+            const findOneAndUpdate = () => {
+                model.findOneAndUpdate(getSearchObj(collection, req.params), updateBody, function (error) {
+                    if (error)
+                        return res.json({ error });
+                    return res.json({ message: `${collection.slice(0, collection.length - 1)} was updated successfully`, change: updateBody });
+                });
+            }
             if (collection === Constants.Users && updateBody.hasOwnProperty('password')) {
                 let error = '';
-                const errCb = err => error = err;
-                hashPassword(req.body.password, hash => updateBody.password = hash, errCb);
-                if (error !== '') return res.json({ error });
+                hashPassword(req.body.password).then(hash => {
+                    updateBody.password = hash;
+                    findOneAndUpdate();
+                }).catch(err => error = res.json({ error }));
             }
-            setTimeout(()=>{
-                model.findOneAndUpdate(getSearchObj(collection, req.params), updateBody, function (error) {
-                if (error)
-                    return res.json({ error });
-                });
-                return res.json({ message: `${collection.slice(0, collection.length - 1)} was updated successfully` });
-            },100);
+            else
+                findOneAndUpdate();
         },
         schema: function (req, res, next) {
             return res.status(200).send(getModelProps(model).filter(prop => prop !== 'id'));
