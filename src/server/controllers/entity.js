@@ -32,6 +32,12 @@ exports.entity = function (collection) {
     return {
         add: function (req, res, next) {
             let newId;
+            if (collection === Constants.Users)
+                model.findOne({ username: req.body.username }).exec((error, result) => {
+                    if (error) return res.json({ error });
+                    if (result && Object.keys(result).length > 0)
+                        return res.json({ error: `A user with name ${req.body.username} already exists!` });
+                });
             model.count({}, function (error, count) {
                 if (error)
                     return res.json({ error });
@@ -47,7 +53,7 @@ exports.entity = function (collection) {
                 const entitySelf = entity;
                 //save it to the db
                 entity.save(function (error) {
-                    const change = _.pick(entitySelf, req.body.keys);
+                    const change = _.pick(entitySelf, Object.keys(req.body));
                     if (error) { return res.json({ error }); }
                     //Respond to request indicating the pooja was created
                     return res.json({ message: `${collection.slice(0, collection.length - 1)} was added successfully`, change });
