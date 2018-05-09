@@ -7,7 +7,7 @@ exports.addTransaction = function (req, res, next) {
     id,
     bankName,
     chequeNo,
-    createdDate,
+    // createdDate,
     phoneNumber,
     names,
     gothram,
@@ -18,6 +18,7 @@ exports.addTransaction = function (req, res, next) {
     createdBy,
     others,
   } = req.body;
+  const createdDate = new Date().toDateString();
   let { selectedDates } = req.body;
   if (selectedDates && typeof selectedDates === "string")
     selectedDates = JSON.parse(selectedDates);
@@ -66,20 +67,39 @@ exports.getTransactions = function (req, res, next) {
 
 exports.searchTransactions = function (req, res, next) {
   const searchValue = req.body.searchValue;
-  let searchObject = { phoneNumber: searchValue };
   if (searchValue.length === 0) {
     return res.json({ transactions: [] });
   }
-  if (isNaN(Number(searchValue))) {
-    const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
-    searchObject = { names: { $regex: regex } };
+  // if (isNaN(Number(searchValue))) {
+  //   const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
+  //   searchObject = { names: { $regex: regex } };
+  // }
+  const numericalSearchVal = Number(searchValue);
+  if (isNaN(numericalSearchVal)) {
+    // const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
+    searchObject = { names: { $regex: `(?i)${searchValue}` } };
+    Transaction.find(searchObject, (err, transactions) => {
+      if (err) {
+        return res.status(500).send(err);
+      }
+      return res.json({ transactions });
+    });
   }
-  Transaction.find(searchObject, (err, transactions) => {
-    if (err) {
-      res.status(500).send(err);
-    }
-    res.json({ transactions });
-  });
+  else {
+    //{ $where: `/${searchValue}/.test(this.phoneNumber)` } This also works but has a chance of SQL injection
+    Transaction.find({ $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` }).
+    exec((err, transactions) => {
+      if (err) {
+        return res.status(500).send(err);
+      }
+      return res.json({ transactions });
+    });
+    // Transaction.find().exec((error, transactions) => {
+    //   if (error) return res.json({ error });
+    //   transactions= transactions.filter(transaction=> transaction.phoneNumber.toString().indexOf(searchValue) !== -1)
+    //   return res.json({ transactions });
+    // });
+  }
 }
 
 exports.getReports = function (req, res, next) {
@@ -96,8 +116,21 @@ exports.getReports = function (req, res, next) {
     array.forEach(x => slicedObj[x] = obj[x]);
     return slicedObj;
   }
-  let searchObj = {};
+  const searchObj = getSearchObj(selectedDates, pooja);
+  Transaction.find(searchObj).select(report.join(' ')).exec(function (error, results) {
+    if (error) return res.json({ error });
+    if (ReportName === Constants.Management) {
+      const reportCount = results.length;
+      results = results.map(result => ({ 'pooja': result.pooja, 'total poojas': reportCount, 'total amount': result.amount * reportCount }));
+    }
+    else
+      results = results.map(result => slice(report, result));
+    return res.json(results);
+  });
+}
+const getSearchObj = (selectedDates, pooja) => {
   let dates = selectedDates;
+  let searchObj = {};
   if (selectedDates && typeof selectedDates === "string")
     dates = [selectedDates];
   const length = dates ? dates.length : undefined;
@@ -112,10 +145,7 @@ exports.getReports = function (req, res, next) {
     searchObj = { selectedDates: { "$in": dates } };
   }
   if (pooja)
-    searchObj = { ...searchObj, pooja };
-  Transaction.find(searchObj).select(report.join(' ')).exec(function (error, results) {
-    if (error) return res.json({ error });
-    results = results.map(result => slice(report, result));
-    return res.json(results);
-  });
+    return { ...searchObj, pooja };
+  else
+    return { createdDate: searchObj.selectedDates };
 }
