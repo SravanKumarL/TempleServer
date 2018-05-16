@@ -5,6 +5,7 @@ const hashPassword = Users.hashPassword;
 const { Constants } = require('../constants/constants');
 const signUp = Authenticate.signup;
 const Pooja = require('../models/poojaDetails');
+const Transaction = require('../models/transactions');
 const _ = require('lodash');
 const populateModel = function (model, reqBody, id) {
     if (!checkReqBody(model, reqBody))
@@ -17,6 +18,8 @@ const getModel = (collection) => {
             return Pooja;
         case Constants.Users:
             return User;
+        case Constants.Transactions:
+            return Transaction;
         default:
             return null;
     }
@@ -31,7 +34,6 @@ exports.entity = function (collection) {
     let model = getModel(collection);
     return {
         add: function (req, res, next) {
-            let newId;
             if (collection === Constants.Users)
                 model.findOne({ username: req.body.username }).exec((error, result) => {
                     if (error) return res.json({ error });
@@ -41,11 +43,10 @@ exports.entity = function (collection) {
             model.count({}, function (error, count) {
                 if (error)
                     return res.json({ error });
-                newId = count + 1;
             }).then((resolve, reject) => {
                 if (reject)
                     return res.json({ error: reject });
-                let entity = populateModel(model, req.body, newId);
+                let entity = populateModel(model, req.body, resolve + 1);
                 if (entity === null) {
                     let modelProps = getModelProps(model);
                     return res.status(422).send({ error: `You must provide ${modelProps.slice(0, modelProps.length - 1).join(', ')} and ${modelProps[modelProps.length - 1]}` });

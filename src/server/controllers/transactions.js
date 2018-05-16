@@ -4,7 +4,6 @@ const Transaction = require('../models/transactions');
 exports.addTransaction = function (req, res, next) {
   // Extract the required data
   const {
-    id,
     bankName,
     chequeNo,
     // createdDate,
@@ -30,30 +29,39 @@ exports.addTransaction = function (req, res, next) {
   if (!names || !pooja || !phoneNumber) {
     return res.status(422).send({ error: 'You must provide phone number names and pooja' });
   }
-  // Create new model instance
-  const transaction = new Transaction({
-    id,
-    phoneNumber,
-    names,
-    gothram,
-    nakshatram,
-    selectedDates,
-    numberOfDays,
-    pooja,
-    amount,
-    bankName,
-    chequeNo,
-    createdBy,
-    createdDate,
-    others,
+  Transaction.count({}, function (error, count) {
+    if (error)
+      return res.json({ message: error });
+  }).then((resolve, reject) => {
+    if (reject)
+      return res.json({ message: reject });
+    const id = resolve + 1;
+    // Create new model instance
+    const transaction = new Transaction({
+      id,
+      phoneNumber,
+      names,
+      gothram,
+      nakshatram,
+      selectedDates,
+      numberOfDays,
+      pooja,
+      amount,
+      bankName,
+      chequeNo,
+      createdBy,
+      createdDate,
+      others,
+    });
+
+    //save it to the db
+    transaction.save(function (err) {
+      if (err) { return next(err); }
+      //Respond to request indicating the transaction was created
+      res.json({ message: 'Transaction was saved successfully' });
+    });
   });
 
-  //save it to the db
-  transaction.save(function (err) {
-    if (err) { return next(err); }
-    //Respond to request indicating the transaction was created
-    res.json({ message: 'Transaction was saved successfully' });
-  });
 }
 
 exports.getTransactions = function (req, res, next) {
@@ -88,12 +96,12 @@ exports.searchTransactions = function (req, res, next) {
   else {
     //{ $where: `/${searchValue}/.test(this.phoneNumber)` } This also works but has a chance of SQL injection
     Transaction.find({ $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` }).
-    exec((err, transactions) => {
-      if (err) {
-        return res.status(500).send(err);
-      }
-      return res.json({ transactions });
-    });
+      exec((err, transactions) => {
+        if (err) {
+          return res.status(500).send(err);
+        }
+        return res.json({ transactions });
+      });
     // Transaction.find().exec((error, transactions) => {
     //   if (error) return res.json({ error });
     //   transactions= transactions.filter(transaction=> transaction.phoneNumber.toString().indexOf(searchValue) !== -1)
