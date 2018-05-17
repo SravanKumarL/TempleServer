@@ -17,7 +17,8 @@ exports.addTransaction = function (req, res, next) {
     createdBy,
     others,
   } = req.body;
-  const createdDate = new Date().toDateString();
+  let createdDate = new Date().toISOString();
+  createdDate= createdDate.substring(0,createdDate.indexOf("T"));
   let { selectedDates } = req.body;
   if (selectedDates && typeof selectedDates === "string")
     selectedDates = JSON.parse(selectedDates);
