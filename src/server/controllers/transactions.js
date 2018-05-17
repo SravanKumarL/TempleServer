@@ -1,6 +1,7 @@
 const { Constants, parseDate } = require('../constants/constants');
-const { reportMapping } = require('../constants/constants');
+const { reportMapping, getModelProps } = require('../constants/constants');
 const Transaction = require('../models/transactions');
+const _ = require('lodash');
 exports.addTransaction = function (req, res, next) {
   // Extract the required data
   const {
@@ -18,7 +19,7 @@ exports.addTransaction = function (req, res, next) {
     others,
   } = req.body;
   let createdDate = new Date().toISOString();
-  createdDate= createdDate.substring(0,createdDate.indexOf("T"));
+  createdDate = createdDate.substring(0, createdDate.indexOf("T"));
   let { selectedDates } = req.body;
   if (selectedDates && typeof selectedDates === "string")
     selectedDates = JSON.parse(selectedDates);
@@ -54,7 +55,6 @@ exports.addTransaction = function (req, res, next) {
       createdDate,
       others,
     });
-
     //save it to the db
     transaction.save(function (err) {
       if (err) { return next(err); }
@@ -66,11 +66,12 @@ exports.addTransaction = function (req, res, next) {
 }
 
 exports.getTransactions = function (req, res, next) {
-  Transaction.find().exec((err, transactions) => {
+  Transaction.find().lean().exec((err, transactions) => {
     if (err) {
       res.status(500).send(err);
     }
-    res.json({ transactions });
+    const modelProps = getModelProps(Transaction);
+    res.json({ transactions: transactions.map(transaction => _.pick(transaction, modelProps)) });
   });
 }
 
@@ -87,21 +88,22 @@ exports.searchTransactions = function (req, res, next) {
   if (isNaN(numericalSearchVal)) {
     // const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
     searchObject = { names: { $regex: `(?i)${searchValue}` } };
-    Transaction.find(searchObject, (err, transactions) => {
+    const modelProps = getModelProps(Transaction);
+    Transaction.find(searchObject).lean().exec((err, transactions) => {
       if (err) {
         return res.status(500).send(err);
       }
-      return res.json({ transactions });
+      return res.json({ transactions: transactions.map(transaction => _.pick(transaction, modelProps)) });
     });
   }
   else {
     //{ $where: `/${searchValue}/.test(this.phoneNumber)` } This also works but has a chance of SQL injection
-    Transaction.find({ $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` }).
-      exec((err, transactions) => {
+    Transaction.find({ $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` }).lean()
+      .exec((err, transactions) => {
         if (err) {
           return res.status(500).send(err);
         }
-        return res.json({ transactions });
+        return res.json({ transactions: transactions.map(transaction => _.pick(transaction, modelProps)) });
       });
     // Transaction.find().exec((error, transactions) => {
     //   if (error) return res.json({ error });
@@ -126,7 +128,7 @@ exports.getReports = function (req, res, next) {
     return slicedObj;
   }
   const searchObj = getSearchObj(selectedDates, pooja);
-  Transaction.find(searchObj).select(report.join(' ')).exec(function (error, results) {
+  Transaction.find(searchObj).lean().select(report.join(' ')).exec(function (error, results) {
     if (error) return res.json({ error });
     if (ReportName === Constants.Management) {
       const reportCount = results.length;

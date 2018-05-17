@@ -2,7 +2,7 @@ const Users = require('../models/user');
 const User = Users.User;
 const Authenticate = require('./authentication');
 const hashPassword = Users.hashPassword;
-const { Constants } = require('../constants/constants');
+const { Constants, getModelProps } = require('../constants/constants');
 const signUp = Authenticate.signup;
 const Pooja = require('../models/poojaDetails');
 const Transaction = require('../models/transactions');
@@ -28,7 +28,6 @@ const checkReqBody = function (model, reqBody) {
     const modelProps = getModelProps(model).filter(prop => prop !== 'id');
     return modelProps.filter(prop => reqBody.hasOwnProperty(prop)).length === modelProps.length;
 }
-const getModelProps = (model) => Object.getOwnPropertyNames(model.schema.obj);
 const getSearchObj = (collection, reqParams) => (collection === Constants.Users ? { username: reqParams.username } : { id: reqParams.id });
 exports.entity = function (collection) {
     let model = getModel(collection);
@@ -63,7 +62,7 @@ exports.entity = function (collection) {
         },
         get: function (req, res, next) {
             let modelProps = getModelProps(model);
-            model.find().exec((error, data) => {
+            model.find().lean().exec((error, data) => {
                 if (error) {
                     return res.json({ error });
                 }
