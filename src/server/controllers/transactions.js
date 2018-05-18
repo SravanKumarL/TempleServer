@@ -85,10 +85,10 @@ exports.searchTransactions = function (req, res, next) {
   //   searchObject = { names: { $regex: regex } };
   // }
   const numericalSearchVal = Number(searchValue);
+  const modelProps = getModelProps(Transaction);
   if (isNaN(numericalSearchVal)) {
     // const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
-    searchObject = { names: { $regex: `(?i)${searchValue}` } };
-    const modelProps = getModelProps(Transaction);
+    const searchObject = { names: { $regex: `(?i)${searchValue}` } };
     Transaction.find(searchObject).lean().exec((err, transactions) => {
       if (err) {
         return res.status(500).send(err);
@@ -122,41 +122,50 @@ exports.getReports = function (req, res, next) {
   if (!report)
     return res.json({ error: 'Invalid report name' });
   // find({createdDate:{$gte:fromDate,$lte:toDate}})
-  const slice = (array, obj) => {
-    let slicedObj = {};
-    array.forEach(x => slicedObj[x] = obj[x]);
-    return slicedObj;
-  }
-  const searchObj = getSearchObj(selectedDates, pooja);
+  const searchObj = getSearchObj(ReportName, selectedDates, pooja);
   Transaction.find(searchObj).lean().select(report.join(' ')).exec(function (error, results) {
     if (error) return res.json({ error });
-    if (ReportName === Constants.Management) {
-      const reportCount = results.length;
-      results = results.map(result => ({ 'pooja': result.pooja, 'total poojas': reportCount, 'total amount': result.amount * reportCount }));
-    }
-    else
+    if (results.length && results.length > 0) {
+      let pooja = '';
       results = results.map(result => slice(report, result));
+      if (ReportName === Constants.Management) {
+        results = results.reduce((accumulator, currValue) => {
+          pooja = accumulator[currValue.pooja];
+          accumulator[currValue.pooja] = { ...(pooja || currValue), 'total poojas': pooja && pooja['total poojas'] ? pooja['total poojas'] + 1 : 1 };
+          return accumulator;
+        }, {});
+        results = Object.keys(results).map(key => {
+          const { amount, ...rest } = results[key];
+          return { ...rest, 'total amount': amount * rest['total poojas'] };
+        });
+      }
+    }
     return res.json(results);
   });
 }
-const getSearchObj = (selectedDates, pooja) => {
+
+const slice = (array, obj) => {
+  let slicedObj = {};
+  array.forEach(x => slicedObj[x] = obj[x]);
+  return slicedObj;
+}
+const getSearchObj = (reportName, selectedDates, pooja) => {
   let dates = selectedDates;
   let searchObj = {};
   if (selectedDates && typeof selectedDates === "string")
     dates = [selectedDates];
   const length = dates ? dates.length : undefined;
+  const dateCriteria = reportName === Constants.Management ? 'createdDate' : ((reportName === Constants.Pooja) ? 'selectedDates' : 'createdDate'); // To look at accounts report
   if (!length) {
-    searchObj = { selectedDates: parseDate(dates) };
-  }
-  else if (length === 1) {
-    searchObj = { selectedDates: parseDate(dates[0]) };
+    searchObj = { "selectedDates": [parseDate(dates)] };
   }
   else {
     dates = selectedDates.map(date => parseDate(date));
-    searchObj = { selectedDates: { "$in": dates } };
+    searchObj = { "selectedDates": { "$in": dates } };
   }
+  searchObj = { [dateCriteria]: searchObj.selectedDates };
   if (pooja)
     return { ...searchObj, pooja };
   else
-    return { createdDate: searchObj.selectedDates };
+    return searchObj;
 }
