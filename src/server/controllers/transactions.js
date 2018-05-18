@@ -7,7 +7,6 @@ exports.addTransaction = function (req, res, next) {
   const {
     bankName,
     chequeNo,
-    // createdDate,
     phoneNumber,
     names,
     gothram,
@@ -105,11 +104,6 @@ exports.searchTransactions = function (req, res, next) {
         }
         return res.json({ transactions: transactions.map(transaction => _.pick(transaction, modelProps)) });
       });
-    // Transaction.find().exec((error, transactions) => {
-    //   if (error) return res.json({ error });
-    //   transactions= transactions.filter(transaction=> transaction.phoneNumber.toString().indexOf(searchValue) !== -1)
-    //   return res.json({ transactions });
-    // });
   }
 }
 
@@ -121,7 +115,6 @@ exports.getReports = function (req, res, next) {
   const report = reportMapping[ReportName];
   if (!report)
     return res.json({ error: 'Invalid report name' });
-  // find({createdDate:{$gte:fromDate,$lte:toDate}})
   const searchObj = getSearchObj(ReportName, selectedDates, pooja);
   Transaction.find(searchObj).lean().select(report.join(' ')).exec(function (error, results) {
     if (error) return res.json({ error });
