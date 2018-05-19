@@ -1,13 +1,12 @@
 const { Constants, parseDate } = require('../constants/constants');
-const { reportMapping } = require('../constants/constants');
+const { reportMapping, getModelProps } = require('../constants/constants');
 const Transaction = require('../models/transactions');
+const _ = require('lodash');
 exports.addTransaction = function (req, res, next) {
   // Extract the required data
   const {
-    id,
     bankName,
     chequeNo,
-    // createdDate,
     phoneNumber,
     names,
     gothram,
@@ -18,7 +17,8 @@ exports.addTransaction = function (req, res, next) {
     createdBy,
     others,
   } = req.body;
-  const createdDate = new Date().toDateString();
+  let createdDate = new Date().toISOString();
+  createdDate = createdDate.substring(0, createdDate.indexOf("T"));
   let { selectedDates } = req.body;
   if (selectedDates && typeof selectedDates === "string")
     selectedDates = JSON.parse(selectedDates);
@@ -30,38 +30,47 @@ exports.addTransaction = function (req, res, next) {
   if (!names || !pooja || !phoneNumber) {
     return res.status(422).send({ error: 'You must provide phone number names and pooja' });
   }
-  // Create new model instance
-  const transaction = new Transaction({
-    id,
-    phoneNumber,
-    names,
-    gothram,
-    nakshatram,
-    selectedDates,
-    numberOfDays,
-    pooja,
-    amount,
-    bankName,
-    chequeNo,
-    createdBy,
-    createdDate,
-    others,
+  Transaction.count({}, function (error, count) {
+    if (error)
+      return res.json({ message: error });
+  }).then((resolve, reject) => {
+    if (reject)
+      return res.json({ message: reject });
+    const id = resolve + 1;
+    // Create new model instance
+    const transaction = new Transaction({
+      id,
+      phoneNumber,
+      names,
+      gothram,
+      nakshatram,
+      selectedDates,
+      numberOfDays,
+      pooja,
+      amount,
+      bankName,
+      chequeNo,
+      createdBy,
+      createdDate,
+      others,
+    });
+    //save it to the db
+    transaction.save(function (err) {
+      if (err) { return next(err); }
+      //Respond to request indicating the transaction was created
+      res.json({ message: 'Transaction was saved successfully' });
+    });
   });
 
-  //save it to the db
-  transaction.save(function (err) {
-    if (err) { return next(err); }
-    //Respond to request indicating the transaction was created
-    res.json({ message: 'Transaction was saved successfully' });
-  });
 }
 
 exports.getTransactions = function (req, res, next) {
-  Transaction.find().exec((err, transactions) => {
+  Transaction.find().lean().exec((err, transactions) => {
     if (err) {
       res.status(500).send(err);
     }
-    res.json({ transactions });
+    const modelProps = getModelProps(Transaction);
+    res.json({ transactions: transactions.map(transaction => _.pick(transaction, modelProps)) });
   });
 }
 
@@ -75,30 +84,26 @@ exports.searchTransactions = function (req, res, next) {
   //   searchObject = { names: { $regex: regex } };
   // }
   const numericalSearchVal = Number(searchValue);
+  const modelProps = getModelProps(Transaction);
   if (isNaN(numericalSearchVal)) {
     // const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
-    searchObject = { names: { $regex: `(?i)${searchValue}` } };
-    Transaction.find(searchObject, (err, transactions) => {
+    const searchObject = { names: { $regex: `(?i)${searchValue}` } };
+    Transaction.find(searchObject).lean().exec((err, transactions) => {
       if (err) {
         return res.status(500).send(err);
       }
-      return res.json({ transactions });
+      return res.json({ transactions: transactions.map(transaction => _.pick(transaction, modelProps)) });
     });
   }
   else {
     //{ $where: `/${searchValue}/.test(this.phoneNumber)` } This also works but has a chance of SQL injection
-    Transaction.find({ $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` }).
-    exec((err, transactions) => {
-      if (err) {
-        return res.status(500).send(err);
-      }
-      return res.json({ transactions });
-    });
-    // Transaction.find().exec((error, transactions) => {
-    //   if (error) return res.json({ error });
-    //   transactions= transactions.filter(transaction=> transaction.phoneNumber.toString().indexOf(searchValue) !== -1)
-    //   return res.json({ transactions });
-    // });
+    Transaction.find({ $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` }).lean()
+      .exec((err, transactions) => {
+        if (err) {
+          return res.status(500).send(err);
+        }
+        return res.json({ transactions: transactions.map(transaction => _.pick(transaction, modelProps)) });
+      });
   }
 }
 
@@ -110,42 +115,50 @@ exports.getReports = function (req, res, next) {
   const report = reportMapping[ReportName];
   if (!report)
     return res.json({ error: 'Invalid report name' });
-  // find({createdDate:{$gte:fromDate,$lte:toDate}})
-  const slice = (array, obj) => {
-    let slicedObj = {};
-    array.forEach(x => slicedObj[x] = obj[x]);
-    return slicedObj;
-  }
-  const searchObj = getSearchObj(selectedDates, pooja);
-  Transaction.find(searchObj).select(report.join(' ')).exec(function (error, results) {
+  const searchObj = getSearchObj(ReportName, selectedDates, pooja);
+  Transaction.find(searchObj).lean().select(report.join(' ')).exec(function (error, results) {
     if (error) return res.json({ error });
-    if (ReportName === Constants.Management) {
-      const reportCount = results.length;
-      results = results.map(result => ({ 'pooja': result.pooja, 'total poojas': reportCount, 'total amount': result.amount * reportCount }));
-    }
-    else
+    if (results.length && results.length > 0) {
+      let pooja = '';
       results = results.map(result => slice(report, result));
+      if (ReportName === Constants.Management) {
+        results = results.reduce((accumulator, currValue) => {
+          pooja = accumulator[currValue.pooja];
+          accumulator[currValue.pooja] = { ...(pooja || currValue), 'total poojas': pooja && pooja['total poojas'] ? pooja['total poojas'] + 1 : 1 };
+          return accumulator;
+        }, {});
+        results = Object.keys(results).map(key => {
+          const { amount, ...rest } = results[key];
+          return { ...rest, 'total amount': amount * rest['total poojas'] };
+        });
+      }
+    }
     return res.json(results);
   });
 }
-const getSearchObj = (selectedDates, pooja) => {
+
+const slice = (array, obj) => {
+  let slicedObj = {};
+  array.forEach(x => slicedObj[x] = obj[x]);
+  return slicedObj;
+}
+const getSearchObj = (reportName, selectedDates, pooja) => {
   let dates = selectedDates;
   let searchObj = {};
   if (selectedDates && typeof selectedDates === "string")
     dates = [selectedDates];
   const length = dates ? dates.length : undefined;
+  const dateCriteria = reportName === Constants.Management ? 'createdDate' : ((reportName === Constants.Pooja) ? 'selectedDates' : 'createdDate'); // To look at accounts report
   if (!length) {
-    searchObj = { selectedDates: parseDate(dates) };
-  }
-  else if (length === 1) {
-    searchObj = { selectedDates: parseDate(dates[0]) };
+    searchObj = { "selectedDates": [parseDate(dates)] };
   }
   else {
     dates = selectedDates.map(date => parseDate(date));
-    searchObj = { selectedDates: { "$in": dates } };
+    searchObj = { "selectedDates": { "$in": dates } };
   }
+  searchObj = { [dateCriteria]: searchObj.selectedDates };
   if (pooja)
     return { ...searchObj, pooja };
   else
-    return { createdDate: searchObj.selectedDates };
+    return searchObj;
 }
