@@ -57,3 +57,4 @@ exports.parseDate = (date) => {
         return getCurrentDate();
     }
 }
+exports.getModelProps= (model) => Object.getOwnPropertyNames(model.schema.obj);
