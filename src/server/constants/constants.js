@@ -35,8 +35,12 @@ const getCurrentDate = (date = new Date()) => {
     if (mm < 10) {
         mm = '0' + mm
     }
-    today = `${yyyy}-${mm}-${dd}`;
+    today = `${dd}-${mm}-${yyyy}`;
     return today;
+}
+const getDate = (dateString) => {
+    const parts = dateString.split('-');
+    return new Date(Date.parse(`${parts[2]}-${parts[1]}-${parts[0]}`));
 }
 exports.getCurrentDate = getCurrentDate;
 exports.parseDate = (date) => {
@@ -44,9 +48,9 @@ exports.parseDate = (date) => {
         if (typeof date === 'number' || typeof date === 'object')
             return getCurrentDate(new Date(date));
         else if (typeof date === 'string') {
-            date=Date.parse(date);
-            if(date && typeof date === 'number')
-                return getCurrentDate(new Date(date));
+            date=getDate(date);
+            if(date && typeof date === 'object')
+                return getCurrentDate(date);
             else
                 return getCurrentDate();
         }
