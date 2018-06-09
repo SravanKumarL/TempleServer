@@ -33,8 +33,10 @@
     "jest": "20.0.4",
     "jwt-simple": "^0.5.1",
     "lodash": "^4.17.5",
+    "log4js": "^2.8.0",
     "mongoose": "^5.0.15",
     "morgan": "^1.9.0",
+    "node-windows": "^0.1.14",
     "nodemon": "^1.17.3",
     "object-assign": "4.1.1",
     "passport": "^0.4.0",
@@ -59,7 +61,9 @@
   "scripts": {
     "start": "nodemon src/server/index.js",
     "build": "node scripts/build.js",
-    "test": "node scripts/test.js --env=jsdom"
+    "test": "node scripts/test.js --env=jsdom",
+    "install-service": "node service/serviceInstaller.js",
+    "uninstall-service": "node service/serviceUninstaller.js"
   },
   "jest": {
     "collectCoverageFrom": [
