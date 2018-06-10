@@ -2,7 +2,7 @@ const Users = require('../models/user');
 const User = Users.User;
 const Authenticate = require('./authentication');
 const hashPassword = Users.hashPassword;
-const { Constants, getModelProps } = require('../constants/constants');
+const { Constants, getModelProps, getPaginationOptions } = require('../constants/constants');
 const signUp = Authenticate.signup;
 const Pooja = require('../models/poojaDetails');
 const Transaction = require('../models/transactions');
@@ -62,7 +62,9 @@ exports.entity = function (collection) {
         },
         get: function (req, res, next) {
             let modelProps = getModelProps(model);
-            model.find().lean().exec((error, data) => {
+            const { count, pageSize } = req.body;
+            const paginationOptions = getPaginationOptions(pageSize, count);
+            model.find({}, {}, paginationOptions).lean().exec((error, data) => {
                 if (error) {
                     return res.json({ error });
                 }

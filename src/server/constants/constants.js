@@ -10,7 +10,8 @@ const constants = {
     Accounts: 'Accounts',
     Pooja: 'Pooja',
     Management: 'Management',
-    Users:'users'
+    Users: 'users',
+    minPageSize: 10
 }
 const ManagementReport = ['pooja', 'amount'];
 const PoojaReport = ['names', 'gothram', 'nakshatram'];
@@ -48,8 +49,8 @@ exports.parseDate = (date) => {
         if (typeof date === 'number' || typeof date === 'object')
             return getCurrentDate(new Date(date));
         else if (typeof date === 'string') {
-            date=getDate(date);
-            if(date && typeof date === 'object')
+            date = getDate(date);
+            if (date && typeof date === 'object')
                 return getCurrentDate(date);
             else
                 return getCurrentDate();
@@ -57,8 +58,15 @@ exports.parseDate = (date) => {
         else
             return getCurrentDate();
     }
-    catch(exception){
+    catch (exception) {
         return getCurrentDate();
     }
 }
-exports.getModelProps= (model) => Object.getOwnPropertyNames(model.schema.obj);
+exports.getModelProps = (model) => Object.getOwnPropertyNames(model.schema.obj);
+exports.getPaginationOptions = (pageSize, count) => {
+    let paginationOptions = {};
+    pageSize === pageSize || constants.minPageSize;
+    const bufferedPageSize = 2 * pageSize;
+    paginationOptions = { limit: bufferedPageSize, skip: count || 0 };
+    return paginationOptions;
+}

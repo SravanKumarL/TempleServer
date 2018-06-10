@@ -1,4 +1,4 @@
-const { Constants, parseDate } = require('../constants/constants');
+const { Constants, parseDate, getPaginationOptions } = require('../constants/constants');
 const { reportMapping, getModelProps } = require('../constants/constants');
 const Transaction = require('../models/transactions');
 const _ = require('lodash');
@@ -74,7 +74,7 @@ exports.getTransactions = function (req, res, next) {
 }
 
 exports.searchTransactions = function (req, res, next) {
-  const searchValue = req.body.searchValue;
+  const { searchValue, pageSize, count } = req.body;
   if (searchValue.length === 0) {
     return res.json({ transactions: [] });
   }
@@ -87,7 +87,7 @@ exports.searchTransactions = function (req, res, next) {
   if (isNaN(numericalSearchVal)) {
     // const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
     const searchObject = { names: { $regex: `(?i)${searchValue}` } };
-    Transaction.find(searchObject).lean().exec((err, transactions) => {
+    Transaction.find(searchObject, {}, getPaginationOptions(pageSize, count)).lean().exec((err, transactions) => {
       if (err) {
         return res.status(500).send(err);
       }
@@ -96,7 +96,8 @@ exports.searchTransactions = function (req, res, next) {
   }
   else {
     //{ $where: `/${searchValue}/.test(this.phoneNumber)` } This also works but has a chance of SQL injection
-    Transaction.find({ $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` }).lean()
+    Transaction.find({ $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` }, {},
+      getPaginationOptions(pageSize, count)).lean()
       .exec((err, transactions) => {
         if (err) {
           return res.status(500).send(err);
@@ -108,14 +109,14 @@ exports.searchTransactions = function (req, res, next) {
 
 exports.getReports = function (req, res, next) {
   const searchCriteria = req.body;
-  const { ReportName, selectedDates, pooja } = searchCriteria;
+  const { ReportName, selectedDates, pooja, count, pageSize } = searchCriteria;
   if (!ReportName || !selectedDates || (ReportName === Constants.Pooja && !pooja))
     return res.json({ error: 'Search criteria is invalid' });
   const report = reportMapping[ReportName];
   if (!report)
     return res.json({ error: 'Invalid report name' });
   const searchObj = getSearchObj(ReportName, selectedDates, pooja);
-  Transaction.find(searchObj).lean().select(report.join(' ')).exec(function (error, results) {
+  Transaction.find(searchObj, {}, getPaginationOptions(pageSize, count)).lean().select(report.join(' ')).exec(function (error, results) {
     if (error) return res.json({ error });
     if (results.length && results.length > 0) {
       let pooja = '';
