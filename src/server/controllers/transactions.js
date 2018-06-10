@@ -17,8 +17,7 @@ exports.addTransaction = function (req, res, next) {
     createdBy,
     others,
   } = req.body;
-  let createdDate = new Date().toISOString();
-  createdDate = createdDate.substring(0, createdDate.indexOf("T"));
+  const createdDate = parseDate(new Date());
   let { selectedDates } = req.body;
   if (selectedDates && typeof selectedDates === "string")
     selectedDates = JSON.parse(selectedDates);
@@ -158,7 +157,7 @@ const getSearchObj = (reportName, selectedDates, pooja) => {
   }
   searchObj = { [dateCriteria]: searchObj.selectedDates };
   if (pooja)
-    return { ...searchObj, pooja };
+    return { ...searchObj, pooja: { "$in": pooja.split(',') } };
   else
     return searchObj;
 }
