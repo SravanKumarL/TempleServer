@@ -62,7 +62,7 @@ exports.entity = function (collection) {
         },
         get: function (req, res, next) {
             let modelProps = getModelProps(model);
-            const { count, pageSize } = req.body;
+            const { count, pageSize } = req.query;
             const paginationOptions = getPaginationOptions(pageSize, count);
             model.find({}, {}, paginationOptions).lean().exec((error, data) => {
                 if (error) {

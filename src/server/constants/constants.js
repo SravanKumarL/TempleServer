@@ -65,8 +65,11 @@ exports.parseDate = (date) => {
 exports.getModelProps = (model) => Object.getOwnPropertyNames(model.schema.obj);
 exports.getPaginationOptions = (pageSize, count) => {
     let paginationOptions = {};
+    if (!pageSize && !count) {
+        return paginationOptions;
+    }
     pageSize === pageSize || constants.minPageSize;
     const bufferedPageSize = 2 * pageSize;
-    paginationOptions = { limit: bufferedPageSize, skip: count || 0 };
+    paginationOptions = { limit: Number(bufferedPageSize), skip: Number(count) !== NaN ? Number(count) : 0 };
     return paginationOptions;
 }
