@@ -11,7 +11,6 @@ const constants = {
     Pooja: 'Pooja',
     Management: 'Management',
     Users: 'users',
-    minPageSize: 10
 }
 const ManagementReport = ['pooja', 'amount'];
 const PoojaReport = ['names', 'gothram', 'nakshatram'];
@@ -65,11 +64,13 @@ exports.parseDate = (date) => {
 exports.getModelProps = (model) => Object.getOwnPropertyNames(model.schema.obj);
 exports.getPaginationOptions = (pageSize, count) => {
     let paginationOptions = {};
-    if (!pageSize && !count) {
+    pageSize = Number(pageSize);
+    count = Number(count);
+    if (isNaN(pageSize) && isNaN(count)) {
         return paginationOptions;
     }
-    pageSize === pageSize || constants.minPageSize;
+    pageSize = isNaN(pageSize) ? 0 : pageSize;
     const bufferedPageSize = 2 * pageSize;
-    paginationOptions = { limit: Number(bufferedPageSize), skip: Number(count) !== NaN ? Number(count) : 0 };
+    paginationOptions = { limit: Number(bufferedPageSize), skip: !isNaN(count) ? count : 0 };
     return paginationOptions;
 }
