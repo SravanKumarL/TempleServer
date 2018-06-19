@@ -13,7 +13,7 @@ const constants = {
     Users: 'users',
 }
 const ManagementReport = ['pooja', 'amount'];
-const PoojaReport = ['names', 'gothram', 'nakshatram'];
+const PoojaReport = ['names', 'gothram', 'nakshatram', 'pooja'];
 const AccountReport = ['names', 'id', 'pooja', 'amount', 'chequeNo', 'bankName', 'createdDate'];
 exports.Constants = constants;
 exports.reportMapping = {
@@ -71,6 +71,8 @@ exports.getPaginationOptions = (pageSize, count) => {
     }
     pageSize = isNaN(pageSize) ? 0 : pageSize;
     const bufferedPageSize = 2 * pageSize;
-    paginationOptions = { limit: Number(bufferedPageSize), skip: !isNaN(count) ? count : 0 };
+    paginationOptions = { skip: !isNaN(count) ? count : 0 };
+    if (bufferedPageSize !== 0)
+        paginationOptions = { ...paginationOptions, limit: Number(bufferedPageSize) };
     return paginationOptions;
 }

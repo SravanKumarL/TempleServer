@@ -1,9 +1,8 @@
 const Users = require('../models/user');
 const User = Users.User;
-const Authenticate = require('./authentication');
 const hashPassword = Users.hashPassword;
 const { Constants, getModelProps, getPaginationOptions } = require('../constants/constants');
-const signUp = Authenticate.signup;
+const uuidv1 = require('uuid/v1');
 const Pooja = require('../models/poojaDetails');
 const Transaction = require('../models/transactions');
 const _ = require('lodash');
@@ -39,26 +38,26 @@ exports.entity = function (collection) {
                     if (result && Object.keys(result).length > 0)
                         return res.json({ error: `A user with name ${req.body.username} already exists!` });
                 });
-            model.count({}, function (error, count) {
-                if (error)
-                    return res.json({ error });
-            }).then((resolve, reject) => {
-                if (reject)
-                    return res.json({ error: reject });
-                let entity = populateModel(model, req.body, resolve + 1);
-                if (entity === null) {
-                    let modelProps = getModelProps(model);
-                    return res.status(422).send({ error: `You must provide ${modelProps.slice(0, modelProps.length - 1).join(', ')} and ${modelProps[modelProps.length - 1]}` });
-                }
-                const entitySelf = entity;
-                //save it to the db
-                entity.save(function (error) {
-                    const change = _.pick(entitySelf, Object.keys(req.body));
-                    if (error) { return res.json({ error }); }
-                    //Respond to request indicating the pooja was created
-                    return res.json({ message: `${collection.slice(0, collection.length - 1)} was added successfully`, change });
-                });
+            // model.count({}, function (error, count) {
+            //     if (error)
+            //         return res.json({ error });
+            // }).then((resolve, reject) => {
+            //     if (reject)
+            //         return res.json({ error: reject });
+            let entity = populateModel(model, req.body, uuidv1());
+            if (entity === null) {
+                let modelProps = getModelProps(model);
+                return res.status(422).send({ error: `You must provide ${modelProps.slice(0, modelProps.length - 1).join(', ')} and ${modelProps[modelProps.length - 1]}` });
+            }
+            const entitySelf = entity;
+            //save it to the db
+            entity.save(function (error) {
+                const change = _.pick(entitySelf, Object.keys(req.body));
+                if (error) { return res.json({ error }); }
+                //Respond to request indicating the pooja was created
+                return res.json({ message: `${collection.slice(0, collection.length - 1)} was added successfully`, change });
             });
+            // });
         },
         get: function (req, res, next) {
             let modelProps = getModelProps(model);

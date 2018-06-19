@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 
 // Define our model
 const poojaSchema = new Schema({
-  id:Number,
+  id:String,
   poojaName: { type: String, sparse: true, lowercase: true, },
   amount: Number,
 });
