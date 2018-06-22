@@ -1,6 +1,7 @@
-const { Constants, parseDate } = require('../constants/constants');
+const { Constants, parseDate, getPaginationOptions, populateCount } = require('../constants/constants');
 const { reportMapping, getModelProps } = require('../constants/constants');
 const Transaction = require('../models/transactions');
+const uuidv1 = require('uuid/v1');
 const _ = require('lodash');
 exports.addTransaction = function (req, res, next) {
   // Extract the required data
@@ -17,8 +18,7 @@ exports.addTransaction = function (req, res, next) {
     createdBy,
     others,
   } = req.body;
-  let createdDate = new Date().toISOString();
-  createdDate = createdDate.substring(0, createdDate.indexOf("T"));
+  const createdDate = parseDate(new Date());
   let { selectedDates } = req.body;
   if (selectedDates && typeof selectedDates === "string")
     selectedDates = JSON.parse(selectedDates);
@@ -30,38 +30,37 @@ exports.addTransaction = function (req, res, next) {
   if (!names || !pooja || !phoneNumber) {
     return res.status(422).send({ error: 'You must provide phone number names and pooja' });
   }
-  Transaction.count({}, function (error, count) {
-    if (error)
-      return res.json({ message: error });
-  }).then((resolve, reject) => {
-    if (reject)
-      return res.json({ message: reject });
-    const id = resolve + 1;
-    // Create new model instance
-    const transaction = new Transaction({
-      id,
-      phoneNumber,
-      names,
-      gothram,
-      nakshatram,
-      selectedDates,
-      numberOfDays,
-      pooja,
-      amount,
-      bankName,
-      chequeNo,
-      createdBy,
-      createdDate,
-      others,
-    });
-    //save it to the db
-    transaction.save(function (err) {
-      if (err) { return next(err); }
-      //Respond to request indicating the transaction was created
-      res.json({ message: 'Transaction was saved successfully' });
-    });
+  // Transaction.count({}, function (error, count) {
+  //   if (error)
+  //     return res.json({ message: error });
+  // }).then((resolve, reject) => {
+  //   if (reject)
+  //     return res.json({ message: reject });
+  // const id = resolve + 1;
+  // Create new model instance
+  const transaction = new Transaction({
+    id: uuidv1(),
+    phoneNumber,
+    names,
+    gothram,
+    nakshatram,
+    selectedDates,
+    numberOfDays,
+    pooja,
+    amount,
+    bankName,
+    chequeNo,
+    createdBy,
+    createdDate,
+    others,
   });
-
+  //save it to the db
+  transaction.save(function (err) {
+    if (err) { return next(err); }
+    //Respond to request indicating the transaction was created
+    res.json({ message: 'Transaction was saved successfully' });
+  });
+  // });
 }
 
 exports.getTransactions = function (req, res, next) {
@@ -75,7 +74,8 @@ exports.getTransactions = function (req, res, next) {
 }
 
 exports.searchTransactions = function (req, res, next) {
-  const searchValue = req.body.searchValue;
+  const { searchValue, take, skip } = req.body;
+  const fetchCount = req.query.fetchCount !== undefined ? req.query.fetchCount : false;
   if (searchValue.length === 0) {
     return res.json({ transactions: [] });
   }
@@ -85,38 +85,63 @@ exports.searchTransactions = function (req, res, next) {
   // }
   const numericalSearchVal = Number(searchValue);
   const modelProps = getModelProps(Transaction);
+  let totalCount = 0;
   if (isNaN(numericalSearchVal)) {
     // const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
     const searchObject = { names: { $regex: `(?i)${searchValue}` } };
-    Transaction.find(searchObject).lean().exec((err, transactions) => {
+    if (fetchCount) {
+      Transaction.find(searchObject).count((error, count) => {
+        if (error)
+          return res.json({ error });
+        totalCount = count;
+      })
+    }
+    Transaction.find(searchObject, {}, getPaginationOptions(take, skip)).lean().exec((err, transactions) => {
       if (err) {
         return res.status(500).send(err);
       }
-      return res.json({ transactions: transactions.map(transaction => _.pick(transaction, modelProps)) });
+      return res.json(populateCount(fetchCount, { transactions: transactions.map(transaction => _.pick(transaction, modelProps)) }, totalCount));
     });
   }
   else {
     //{ $where: `/${searchValue}/.test(this.phoneNumber)` } This also works but has a chance of SQL injection
-    Transaction.find({ $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` }).lean()
+    const whereClause = { $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` };
+    if (fetchCount) {
+      Transaction.find(whereClause).count((error, count) => {
+        if (error)
+          return res.json({ error });
+        totalCount = count;
+      })
+    }
+    Transaction.find(whereClause, {}, getPaginationOptions(take, skip)).lean()
       .exec((err, transactions) => {
         if (err) {
           return res.status(500).send(err);
         }
-        return res.json({ transactions: transactions.map(transaction => _.pick(transaction, modelProps)) });
+        return res.json(populateCount(fetchCount, { transactions: transactions.map(transaction => _.pick(transaction, modelProps)) }, totalCount));
       });
   }
 }
 
 exports.getReports = function (req, res, next) {
   const searchCriteria = req.body;
-  const { ReportName, selectedDates, pooja } = searchCriteria;
+  const fetchCount = req.query.fetchCount !== undefined ? Boolean(req.query.fetchCount) : false;
+  let totalCount = 0;
+  const { ReportName, selectedDates, pooja, skip, take } = searchCriteria;
   if (!ReportName || !selectedDates || (ReportName === Constants.Pooja && !pooja))
     return res.json({ error: 'Search criteria is invalid' });
   const report = reportMapping[ReportName];
   if (!report)
     return res.json({ error: 'Invalid report name' });
   const searchObj = getSearchObj(ReportName, selectedDates, pooja);
-  Transaction.find(searchObj).lean().select(report.join(' ')).exec(function (error, results) {
+  if (fetchCount) {
+    Transaction.find(searchObj).count((error, count) => {
+      if (error)
+        return res.json({ error });
+      totalCount = count;
+    })
+  }
+  Transaction.find(searchObj, {}, getPaginationOptions(take, skip)).lean().select(report.join(' ')).exec(function (error, results) {
     if (error) return res.json({ error });
     if (results.length && results.length > 0) {
       let pooja = '';
@@ -133,7 +158,7 @@ exports.getReports = function (req, res, next) {
         });
       }
     }
-    return res.json(results);
+    return res.json(populateCount(fetchCount, { rows: results }, totalCount));
   });
 }
 
@@ -158,7 +183,7 @@ const getSearchObj = (reportName, selectedDates, pooja) => {
   }
   searchObj = { [dateCriteria]: searchObj.selectedDates };
   if (pooja)
-    return { ...searchObj, pooja };
+    return { ...searchObj, pooja: { "$in": pooja.split(',') } };
   else
     return searchObj;
 }

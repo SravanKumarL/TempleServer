@@ -1,9 +1,8 @@
 const Users = require('../models/user');
 const User = Users.User;
-const Authenticate = require('./authentication');
 const hashPassword = Users.hashPassword;
-const { Constants, getModelProps } = require('../constants/constants');
-const signUp = Authenticate.signup;
+const { Constants, getModelProps, getPaginationOptions, populateCount } = require('../constants/constants');
+const uuidv1 = require('uuid/v1');
 const Pooja = require('../models/poojaDetails');
 const Transaction = require('../models/transactions');
 const _ = require('lodash');
@@ -29,6 +28,22 @@ const checkReqBody = function (model, reqBody) {
     return modelProps.filter(prop => reqBody.hasOwnProperty(prop)).length === modelProps.length;
 }
 const getSearchObj = (collection, reqParams) => (collection === Constants.Users ? { username: reqParams.username } : { id: reqParams.id });
+// exports.getCount = (req, res, next) => {
+//     const handleCount = (error, count) => {
+//         if (error)
+//             return res.json({ error });
+//         return res.send(count);
+//     }
+//     const segments = req.path.split('/');
+//     switch (segments[1]) {
+//         case Constants.Poojas:
+//             return getModel(Constants.Poojas).count({}, handleCount);
+//         case Constants.Users:
+//             return getModel(Constants.Users).count({}, handleCount);
+//         default:
+//             return getModel(Constants.Transactions).count({}, handleCount);
+//     }
+// }
 exports.entity = function (collection) {
     let model = getModel(collection);
     return {
@@ -39,35 +54,45 @@ exports.entity = function (collection) {
                     if (result && Object.keys(result).length > 0)
                         return res.json({ error: `A user with name ${req.body.username} already exists!` });
                 });
-            model.count({}, function (error, count) {
-                if (error)
-                    return res.json({ error });
-            }).then((resolve, reject) => {
-                if (reject)
-                    return res.json({ error: reject });
-                let entity = populateModel(model, req.body, resolve + 1);
-                if (entity === null) {
-                    let modelProps = getModelProps(model);
-                    return res.status(422).send({ error: `You must provide ${modelProps.slice(0, modelProps.length - 1).join(', ')} and ${modelProps[modelProps.length - 1]}` });
-                }
-                const entitySelf = entity;
-                //save it to the db
-                entity.save(function (error) {
-                    const change = _.pick(entitySelf, Object.keys(req.body));
-                    if (error) { return res.json({ error }); }
-                    //Respond to request indicating the pooja was created
-                    return res.json({ message: `${collection.slice(0, collection.length - 1)} was added successfully`, change });
-                });
+            // model.count({}, function (error, count) {
+            //     if (error)
+            //         return res.json({ error });
+            // }).then((resolve, reject) => {
+            //     if (reject)
+            //         return res.json({ error: reject });
+            let entity = populateModel(model, req.body, uuidv1());
+            if (entity === null) {
+                let modelProps = getModelProps(model);
+                return res.status(422).send({ error: `You must provide ${modelProps.slice(0, modelProps.length - 1).join(', ')} and ${modelProps[modelProps.length - 1]}` });
+            }
+            const entitySelf = entity;
+            //save it to the db
+            entity.save(function (error) {
+                const change = _.pick(entitySelf, Object.keys(req.body));
+                if (error) { return res.json({ error }); }
+                //Respond to request indicating the pooja was created
+                return res.json({ message: `${collection.slice(0, collection.length - 1)} was added successfully`, change });
             });
+            // });
         },
         get: function (req, res, next) {
             let modelProps = getModelProps(model);
-            model.find().lean().exec((error, data) => {
+            const { skip, take, fetchCount } = req.query;
+            const paginationOptions = getPaginationOptions(take, skip);
+            let totalCount = 0;
+            if (fetchCount) {
+                model.find().count((error, count) => {
+                    if (error)
+                        return res.json({ error });
+                    totalCount = count;
+                });
+            }
+            model.find({}, {}, paginationOptions).lean().exec((error, data) => {
                 if (error) {
                     return res.json({ error });
                 }
                 let modData = data.map(d => _.pick(d, modelProps));
-                return res.send(modData);
+                return res.json(populateCount(fetchCount, { rows: modData }, totalCount));
             });
         },
         delete: function (req, res, next) {

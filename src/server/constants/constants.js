@@ -10,10 +10,10 @@ const constants = {
     Accounts: 'Accounts',
     Pooja: 'Pooja',
     Management: 'Management',
-    Users:'users'
+    Users: 'users',
 }
 const ManagementReport = ['pooja', 'amount'];
-const PoojaReport = ['names', 'gothram', 'nakshatram'];
+const PoojaReport = ['names', 'gothram', 'nakshatram', 'pooja'];
 const AccountReport = ['names', 'id', 'pooja', 'amount', 'chequeNo', 'bankName', 'createdDate'];
 exports.Constants = constants;
 exports.reportMapping = {
@@ -48,8 +48,8 @@ exports.parseDate = (date) => {
         if (typeof date === 'number' || typeof date === 'object')
             return getCurrentDate(new Date(date));
         else if (typeof date === 'string') {
-            date=getDate(date);
-            if(date && typeof date === 'object')
+            date = getDate(date);
+            if (date && typeof date === 'object')
                 return getCurrentDate(date);
             else
                 return getCurrentDate();
@@ -57,8 +57,27 @@ exports.parseDate = (date) => {
         else
             return getCurrentDate();
     }
-    catch(exception){
+    catch (exception) {
         return getCurrentDate();
     }
 }
-exports.getModelProps= (model) => Object.getOwnPropertyNames(model.schema.obj);
+exports.getModelProps = (model) => Object.getOwnPropertyNames(model.schema.obj);
+exports.getPaginationOptions = (pageSize, count) => {
+    let paginationOptions = {};
+    pageSize = Number(pageSize);
+    count = Number(count);
+    if (isNaN(pageSize) && isNaN(count)) {
+        return paginationOptions;
+    }
+    pageSize = isNaN(pageSize) ? 0 : pageSize;
+    const bufferedPageSize = 2 * pageSize;
+    paginationOptions = { skip: !isNaN(count) ? count : 0 };
+    if (bufferedPageSize !== 0)
+        paginationOptions = { ...paginationOptions, limit: Number(bufferedPageSize) };
+    return paginationOptions;
+}
+exports.populateCount = (fetchCount = false, returnObj = {}, totalCount = 0) => {
+    if (!fetchCount)
+        return returnObj;
+    return { ...returnObj, totalCount };
+}

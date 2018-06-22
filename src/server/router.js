@@ -1,7 +1,7 @@
 const Entity = require('./controllers/entity');
 const Authentication = require('./controllers/authentication');
 const Transaction = require('./controllers/transactions');
-const passportService = require('./services/passport');
+require('./services/passport');
 const passport = require('passport');
 const { Constants } = require('./constants/constants');
 const requireAuth = passport.authenticate('jwt', { session: false });
@@ -18,8 +18,8 @@ module.exports = function (app) {
   // Transaction Routes
   let Transactions = Entity.entity(Constants.Transactions);
   app.post(`/${Constants.Transactions}/${Constants.add}`, requireAuth, Transaction.addTransaction);
-  app.get(`/${Constants.Transactions}/${Constants.get}`, requireAuth, Transaction.getTransactions);
-  app.post(`/${Constants.Transactions}/${Constants.get}`, requireAuth, Transaction.searchTransactions);
+  app.get(`/${Constants.Transactions}`, requireAuth, Transaction.getTransactions);
+  app.post(`/${Constants.Transactions}`, requireAuth, Transaction.searchTransactions);
   app.put(`/${Constants.Transactions}/:id`, requireAuth, Transactions.update);
   app.post(`/${Constants.Reports}`, requireAuth, Transaction.getReports);
 
