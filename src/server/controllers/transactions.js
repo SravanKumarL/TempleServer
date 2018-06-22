@@ -74,8 +74,8 @@ exports.getTransactions = function (req, res, next) {
 }
 
 exports.searchTransactions = function (req, res, next) {
-  const { searchValue, pageSize, count } = req.body;
-  const fetchCount = req.query.count !== undefined ? req.query.count : false;
+  const { searchValue, take, skip } = req.body;
+  const fetchCount = req.query.fetchCount !== undefined ? req.query.fetchCount : false;
   if (searchValue.length === 0) {
     return res.json({ transactions: [] });
   }
@@ -96,7 +96,7 @@ exports.searchTransactions = function (req, res, next) {
         totalCount = count;
       })
     }
-    Transaction.find(searchObject, {}, getPaginationOptions(pageSize, count)).lean().exec((err, transactions) => {
+    Transaction.find(searchObject, {}, getPaginationOptions(take, skip)).lean().exec((err, transactions) => {
       if (err) {
         return res.status(500).send(err);
       }
@@ -113,7 +113,7 @@ exports.searchTransactions = function (req, res, next) {
         totalCount = count;
       })
     }
-    Transaction.find(whereClause, {}, getPaginationOptions(pageSize, count)).lean()
+    Transaction.find(whereClause, {}, getPaginationOptions(take, skip)).lean()
       .exec((err, transactions) => {
         if (err) {
           return res.status(500).send(err);
@@ -125,9 +125,9 @@ exports.searchTransactions = function (req, res, next) {
 
 exports.getReports = function (req, res, next) {
   const searchCriteria = req.body;
-  const fetchCount = req.query.count !== undefined ? Boolean(req.query.count) : false;
+  const fetchCount = req.query.fetchCount !== undefined ? Boolean(req.query.fetchCount) : false;
   let totalCount = 0;
-  const { ReportName, selectedDates, pooja, count, pageSize } = searchCriteria;
+  const { ReportName, selectedDates, pooja, skip, take } = searchCriteria;
   if (!ReportName || !selectedDates || (ReportName === Constants.Pooja && !pooja))
     return res.json({ error: 'Search criteria is invalid' });
   const report = reportMapping[ReportName];
@@ -141,7 +141,7 @@ exports.getReports = function (req, res, next) {
       totalCount = count;
     })
   }
-  Transaction.find(searchObj, {}, getPaginationOptions(pageSize, count)).lean().select(report.join(' ')).exec(function (error, results) {
+  Transaction.find(searchObj, {}, getPaginationOptions(take, skip)).lean().select(report.join(' ')).exec(function (error, results) {
     if (error) return res.json({ error });
     if (results.length && results.length > 0) {
       let pooja = '';

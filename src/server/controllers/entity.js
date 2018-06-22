@@ -77,8 +77,8 @@ exports.entity = function (collection) {
         },
         get: function (req, res, next) {
             let modelProps = getModelProps(model);
-            const { count, pageSize, fetchCount } = req.query;
-            const paginationOptions = getPaginationOptions(pageSize, count);
+            const { skip, take, fetchCount } = req.query;
+            const paginationOptions = getPaginationOptions(take, skip);
             let totalCount = 0;
             if (fetchCount) {
                 model.find().count((error, count) => {
