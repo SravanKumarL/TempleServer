@@ -1,7 +1,7 @@
 const Users = require('../models/user');
 const User = Users.User;
 const hashPassword = Users.hashPassword;
-const { Constants, getModelProps, getPaginationOptions } = require('../constants/constants');
+const { Constants, getModelProps, getPaginationOptions, populateCount } = require('../constants/constants');
 const uuidv1 = require('uuid/v1');
 const Pooja = require('../models/poojaDetails');
 const Transaction = require('../models/transactions');
@@ -28,6 +28,22 @@ const checkReqBody = function (model, reqBody) {
     return modelProps.filter(prop => reqBody.hasOwnProperty(prop)).length === modelProps.length;
 }
 const getSearchObj = (collection, reqParams) => (collection === Constants.Users ? { username: reqParams.username } : { id: reqParams.id });
+// exports.getCount = (req, res, next) => {
+//     const handleCount = (error, count) => {
+//         if (error)
+//             return res.json({ error });
+//         return res.send(count);
+//     }
+//     const segments = req.path.split('/');
+//     switch (segments[1]) {
+//         case Constants.Poojas:
+//             return getModel(Constants.Poojas).count({}, handleCount);
+//         case Constants.Users:
+//             return getModel(Constants.Users).count({}, handleCount);
+//         default:
+//             return getModel(Constants.Transactions).count({}, handleCount);
+//     }
+// }
 exports.entity = function (collection) {
     let model = getModel(collection);
     return {
@@ -61,14 +77,22 @@ exports.entity = function (collection) {
         },
         get: function (req, res, next) {
             let modelProps = getModelProps(model);
-            const { count, pageSize } = req.query;
+            const { count, pageSize, fetchCount } = req.query;
             const paginationOptions = getPaginationOptions(pageSize, count);
+            let totalCount = 0;
+            if (fetchCount) {
+                model.find().count((error, count) => {
+                    if (error)
+                        return res.json({ error });
+                    totalCount = count;
+                });
+            }
             model.find({}, {}, paginationOptions).lean().exec((error, data) => {
                 if (error) {
                     return res.json({ error });
                 }
                 let modData = data.map(d => _.pick(d, modelProps));
-                return res.send(modData);
+                return res.json(populateCount(fetchCount, { rows: modData }, totalCount));
             });
         },
         delete: function (req, res, next) {

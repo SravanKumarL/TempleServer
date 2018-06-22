@@ -76,3 +76,8 @@ exports.getPaginationOptions = (pageSize, count) => {
         paginationOptions = { ...paginationOptions, limit: Number(bufferedPageSize) };
     return paginationOptions;
 }
+exports.populateCount = (fetchCount = false, returnObj = {}, count = 0) => {
+    if (!fetchCount)
+        return returnObj;
+    return { ...returnObj, count };
+}
