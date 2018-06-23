@@ -14,7 +14,7 @@ const constants = {
 }
 const ManagementReport = ['pooja', 'amount'];
 const PoojaReport = ['names', 'gothram', 'nakshatram', 'pooja'];
-const AccountReport = ['names', 'id', 'pooja', 'amount', 'chequeNo', 'bankName', 'createdDate'];
+const AccountReport = ['names', 'phoneNumber', 'pooja', 'amount', 'chequeNo', 'bankName', 'createdDate'];
 exports.Constants = constants;
 exports.reportMapping = {
     'Accounts': AccountReport,
