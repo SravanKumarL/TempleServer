@@ -46,37 +46,50 @@ const getSearchObj = (collection, reqParams) => (collection === Constants.Users 
 // }
 exports.entity = function (collection) {
     let model = getModel(collection);
+    let modelProps = getModelProps(model);
     return {
         add: function (req, res, next) {
-            if (collection === Constants.Users)
-                model.findOne({ username: req.body.username }).exec((error, result) => {
-                    if (error) return res.json({ error });
-                    if (result && Object.keys(result).length > 0)
-                        return res.json({ error: `A user with name ${req.body.username} already exists!` });
-                });
-            // model.count({}, function (error, count) {
-            //     if (error)
-            //         return res.json({ error });
-            // }).then((resolve, reject) => {
-            //     if (reject)
-            //         return res.json({ error: reject });
-            let entity = populateModel(model, req.body, uuidv1());
-            if (entity === null) {
-                let modelProps = getModelProps(model);
-                return res.status(422).send({ error: `You must provide ${modelProps.slice(0, modelProps.length - 1).join(', ')} and ${modelProps[modelProps.length - 1]}` });
+            const uniqueProp = {
+                [Constants.Poojas]: 'poojaName',
+                [Constants.Users]: 'username'
             }
-            const entitySelf = entity;
-            //save it to the db
-            entity.save(function (error) {
-                const change = _.pick(entitySelf, Object.keys(req.body));
-                if (error) { return res.json({ error }); }
-                //Respond to request indicating the pooja was created
-                return res.json({ message: `${collection.slice(0, collection.length - 1)} was added successfully`, change });
-            });
-            // });
+            const saveEntity = () => {
+                // model.count({}, function (error, count) {
+                //     if (error)
+                //         return res.json({ error });
+                // }).then((resolve, reject) => {
+                //     if (reject)
+                //         return res.json({ error: reject });
+                let entity = populateModel(model, req.body, uuidv1());
+                if (entity === null) {
+                    modelProps = modelProps.filter(modelProp => modelProp !== 'id');
+                    return res.status(422).send({ error: `You must provide ${modelProps.slice(0, modelProps.length - 1).join(', ')} and ${modelProps[modelProps.length - 1]}` });
+                }
+                const entitySelf = entity;
+                //save it to the db
+                entity.save(function (error) {
+                    const change = _.pick(entitySelf, modelProps);
+                    if (error) { return res.json({ error }); }
+                    //Respond to request indicating the pooja was created
+                    return res.json({ message: `${collection.slice(0, collection.length - 1)} was added successfully`, change });
+                });
+                // });
+            }
+            if (collection === Constants.Users || collection === Constants.Poojas) {
+                const uniquePropName = uniqueProp[collection];
+                model.findOne({ [uniquePropName]: req.body[uniquePropName] }).exec((error, result) => {
+                    if (error) return res.json({ error });
+                    else if (result && Object.keys(result).length > 0)
+                        return res.json({ error: `A ${uniquePropName} with name ${req.body.username} already exists!` });
+                    else
+                        saveEntity();
+                });
+            }
+            else {
+                saveEntity();
+            }
         },
         get: function (req, res, next) {
-            let modelProps = getModelProps(model);
             const { skip, take, fetchCount } = req.query;
             const paginationOptions = getPaginationOptions(take, skip);
             let totalCount = 0;
@@ -129,7 +142,7 @@ exports.entity = function (collection) {
                 findOneAndUpdate();
         },
         schema: function (req, res, next) {
-            return res.status(200).send(getModelProps(model).filter(prop => prop !== 'id'));
+            return res.status(200).send(modelProps.filter(prop => prop !== 'id'));
         }
     }
 }
