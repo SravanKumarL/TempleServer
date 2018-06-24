@@ -1,5 +1,7 @@
 var log4js = require('log4js');
 var Path = require('path');
+const logType = { error: 'error', warn: 'warn', fatal: 'fatal' };
+
 module.exports.getLogger = (logFileName, logFilePath) => {
     const loggerName = logFileName.substring(0, logFileName.indexOf('.log'));
     log4js.configure({
