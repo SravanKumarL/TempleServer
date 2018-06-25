@@ -1,4 +1,4 @@
-const { Constants, parseDate, getPaginationOptions, populateCount } = require('../constants/constants');
+const { Constants, parseDate, getPaginationOptions, populateCount, castToBoolean } = require('../constants/constants');
 const { reportMapping, getModelProps } = require('../constants/constants');
 const Transaction = require('../models/transactions');
 const uuidv1 = require('uuid/v1');
@@ -125,49 +125,75 @@ exports.searchTransactions = function (req, res, next) {
 
 exports.getReports = function (req, res, next) {
   const searchCriteria = req.body;
-  const fetchCount = req.query.fetchCount !== undefined ? Boolean(req.query.fetchCount) : false;
+  const fetchCount = req.query.fetchCount !== undefined ? castToBoolean(req.query.fetchCount, false) : false;
+  const fetchOthers = req.query.fetchOthers !== undefined ? castToBoolean(req.query.fetchOthers) : undefined;
   let totalCount = 0;
   const { ReportName, selectedDates, pooja, skip, take } = searchCriteria;
   if (!ReportName || !selectedDates || (ReportName === Constants.Pooja && !pooja))
     return res.json({ error: 'Search criteria is invalid' });
-  const report = reportMapping[ReportName];
+  let report = [...reportMapping[ReportName]];
   if (!report)
     return res.json({ error: 'Invalid report name' });
-  const searchObj = getSearchObj(ReportName, selectedDates, pooja);
+  const searchObj = getSearchObj(ReportName, selectedDates, pooja, fetchOthers);
+  const findTransactions = () => Transaction.find(searchObj, {}, getPaginationOptions(take, skip)).lean().select(report.join(' ')).exec(function (error, results) {
+    if (error) return res.json({ error });
+    if (results.length && results.length > 0) {
+      const mapResults = () => {
+        results = results.map(result => slice(report, result));
+        if (ReportName === Constants.Management) {
+          results = reduceToManagementSchema(results);
+        }
+      };
+      new Promise((resolve, reject) => {
+        if (fetchOthers === true) {
+          report.push('others');
+          Transaction.find({ ...searchObj, others: true }, {}, {}).lean().select(report.join(' ')).exec((error, otherResults) => {
+            if (error) reject(error);
+            results = [...results, ...otherResults];
+            mapResults();
+            resolve(populateCount(fetchCount, { rows: results }, totalCount + otherResults.length));
+          });
+        }
+        else {
+          mapResults();
+          resolve(populateCount(fetchCount, { rows: results }, totalCount));
+        }
+      }).then(resolve => res.json(resolve)).catch(error => res.json({ error }));
+    }
+    else {
+      return res.json(populateCount(fetchCount, { rows: results }, totalCount));
+    }
+  });
   if (fetchCount) {
-    Transaction.find(searchObj).count((error, count) => {
+    Promise.resolve(Transaction.find(searchObj).count((error, count) => {
       if (error)
         return res.json({ error });
       totalCount = count;
-    })
+    })).then(findTransactions);
   }
-  Transaction.find(searchObj, {}, getPaginationOptions(take, skip)).lean().select(report.join(' ')).exec(function (error, results) {
-    if (error) return res.json({ error });
-    if (results.length && results.length > 0) {
-      let pooja = '';
-      results = results.map(result => slice(report, result));
-      if (ReportName === Constants.Management) {
-        results = results.reduce((accumulator, currValue) => {
-          pooja = accumulator[currValue.pooja];
-          accumulator[currValue.pooja] = { ...(pooja || currValue), 'total poojas': pooja && pooja['total poojas'] ? pooja['total poojas'] + 1 : 1 };
-          return accumulator;
-        }, {});
-        results = Object.keys(results).map(key => {
-          const { amount, ...rest } = results[key];
-          return { ...rest, 'total amount': amount * rest['total poojas'] };
-        });
-      }
-    }
-    return res.json(populateCount(fetchCount, { rows: results }, totalCount));
-  });
+  else
+    findTransactions();
 }
-
+const reduceToManagementSchema = (results) => {
+  let pooja = '';
+  let newResults = [...results];
+  newResults = newResults.reduce((accumulator, currValue) => {
+    pooja = accumulator[currValue.pooja];
+    accumulator[currValue.pooja] = { ...(pooja || currValue), 'total poojas': pooja && pooja['total poojas'] ? pooja['total poojas'] + 1 : 1 };
+    return accumulator;
+  }, {});
+  newResults = Object.keys(newResults).map(key => {
+    const { amount, ...rest } = newResults[key];
+    return { ...rest, 'total amount': amount * rest['total poojas'] };
+  });
+  return newResults;
+}
 const slice = (array, obj) => {
   let slicedObj = {};
   array.forEach(x => slicedObj[x] = obj[x]);
   return slicedObj;
 }
-const getSearchObj = (reportName, selectedDates, pooja) => {
+const getSearchObj = (reportName, selectedDates, pooja, fetchOthers) => {
   let dates = selectedDates;
   let searchObj = {};
   if (selectedDates && typeof selectedDates === "string")
@@ -182,6 +208,8 @@ const getSearchObj = (reportName, selectedDates, pooja) => {
     searchObj = { "selectedDates": { "$in": dates } };
   }
   searchObj = { [dateCriteria]: searchObj.selectedDates };
+  if (fetchOthers !== undefined)
+    searchObj = { ...searchObj, others: false }
   if (pooja)
     return { ...searchObj, pooja: { "$in": pooja.split(',') } };
   else

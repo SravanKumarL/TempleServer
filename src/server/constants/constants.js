@@ -81,3 +81,4 @@ exports.populateCount = (fetchCount = false, returnObj = {}, totalCount = 0) => 
         return returnObj;
     return { ...returnObj, totalCount };
 }
+exports.castToBoolean = (value, defCast) => value === 'true' ? true : (value === 'false' ? false : defCast);
