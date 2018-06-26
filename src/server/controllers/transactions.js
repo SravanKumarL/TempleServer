@@ -128,42 +128,49 @@ exports.getReports = function (req, res, next) {
   const fetchCount = req.query.fetchCount !== undefined ? castToBoolean(req.query.fetchCount, false) : false;
   const fetchOthers = req.query.fetchOthers !== undefined ? castToBoolean(req.query.fetchOthers) : undefined;
   let totalCount = 0;
-  const { ReportName, selectedDates, pooja, skip, take } = searchCriteria;
+  const { ReportName, selectedDates, pooja, skip, take, createdBy } = searchCriteria;
+
   if (!ReportName || !selectedDates || (ReportName === Constants.Pooja && !pooja))
     return res.json({ error: 'Search criteria is invalid' });
+  
   let report = [...reportMapping[ReportName]];
   if (!report)
     return res.json({ error: 'Invalid report name' });
-  const searchObj = getSearchObj(ReportName, selectedDates, pooja, fetchOthers);
+  
+  //Only if fetchOthers is defined with a boolean value, it will be included in search criteria, else it shall be excluded
+  let searchObj = getSearchObj(ReportName, selectedDates, pooja, fetchOthers);
+
+  //Add createdBy filter
+  if (ReportName === Constants.Management)
+    searchObj = { ...searchObj, createdBy };
+
   const findTransactions = () => Transaction.find(searchObj, {}, getPaginationOptions(take, skip)).lean().select(report.join(' ')).exec(function (error, results) {
     if (error) return res.json({ error });
     if (results.length && results.length > 0) {
-      const mapResults = () => {
-        results = results.map(result => slice(report, result));
-        if (ReportName === Constants.Management) {
-          results = reduceToManagementSchema(results);
-        }
-      };
-      new Promise((resolve, reject) => {
-        if (fetchOthers === true) {
-          report.push('others');
-          Transaction.find({ ...searchObj, others: true }, {}, {}).lean().select(report.join(' ')).exec((error, otherResults) => {
-            if (error) reject(error);
-            results = [...results, ...otherResults];
-            mapResults();
-            resolve(populateCount(fetchCount, { rows: results }, totalCount + otherResults.length));
-          });
-        }
-        else {
-          mapResults();
-          resolve(populateCount(fetchCount, { rows: results }, totalCount));
-        }
-      }).then(resolve => res.json(resolve)).catch(error => res.json({ error }));
+      results = results.map(result => slice(report, result));
+      //Transform results for only management report
+      if (ReportName === Constants.Management) {
+        let pooja = '';
+        results = results.reduce((accumulator, currValue) => {
+          pooja = accumulator[currValue.pooja];
+          accumulator[currValue.pooja] = { ...(pooja || currValue), 'total poojas': pooja && pooja['total poojas'] ? pooja['total poojas'] + 1 : 1 };
+          return accumulator;
+        }, {});
+        results = Object.keys(results).map(key => {
+          const { amount, ...rest } = results[key];
+          return { ...rest, 'total amount': amount * rest['total poojas'] };
+        });
+      }
     }
-    else {
-      return res.json(populateCount(fetchCount, { rows: results }, totalCount));
-    }
+    return res.json(populateCount(fetchCount, { rows: results }, totalCount));
   });
+
+  //Include others in the response payload too
+  if (fetchOthers === true) {
+    report.push('others');
+  }
+  
+  //Fetch count only on demand
   if (fetchCount) {
     Promise.resolve(Transaction.find(searchObj).count((error, count) => {
       if (error)
@@ -174,20 +181,7 @@ exports.getReports = function (req, res, next) {
   else
     findTransactions();
 }
-const reduceToManagementSchema = (results) => {
-  let pooja = '';
-  let newResults = [...results];
-  newResults = newResults.reduce((accumulator, currValue) => {
-    pooja = accumulator[currValue.pooja];
-    accumulator[currValue.pooja] = { ...(pooja || currValue), 'total poojas': pooja && pooja['total poojas'] ? pooja['total poojas'] + 1 : 1 };
-    return accumulator;
-  }, {});
-  newResults = Object.keys(newResults).map(key => {
-    const { amount, ...rest } = newResults[key];
-    return { ...rest, 'total amount': amount * rest['total poojas'] };
-  });
-  return newResults;
-}
+
 const slice = (array, obj) => {
   let slicedObj = {};
   array.forEach(x => slicedObj[x] = obj[x]);
@@ -209,7 +203,7 @@ const getSearchObj = (reportName, selectedDates, pooja, fetchOthers) => {
   }
   searchObj = { [dateCriteria]: searchObj.selectedDates };
   if (fetchOthers !== undefined)
-    searchObj = { ...searchObj, others: false }
+    searchObj = { ...searchObj, others: fetchOthers }
   if (pooja)
     return { ...searchObj, pooja: { "$in": pooja.split(',') } };
   else
