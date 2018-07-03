@@ -19,21 +19,15 @@ exports.generateRandomData = async (modelName, size = 10) => {
     let results = [];
     let resultsPromise = [];
     for (let index = 0; index < size; index++) {
-        let promiseResult = {};
-        resultsPromise.push(Object.keys(model.schema.obj).reduce((p, currVal) => {
-            return p.then((prevResult) => {
-                promiseResult[currVal] = getRandomData(model.schema.obj[currVal], currVal);
-                return new Promise(resolve => resolve(promiseResult));
-            });
-        }, Promise.resolve()).then(resolve => {
-            let result = {};
-            return Promise.all(Object.keys(resolve).map((promRes) => {
-                return resolve[promRes].then(keyValue => {
-                    result[promRes] = keyValue;
-                });
-            })).then(() => {
-                results.push(result);
-            });
+        let propResultsPromise = [];
+        let result = {};
+        Object.keys(model.schema.obj).forEach(prop => {
+            propResultsPromise.push(getRandomData(model.schema.obj[prop], prop).then(resolve => {
+                result[prop] = resolve;
+            }));
+        });
+        resultsPromise.push(Promise.all(propResultsPromise).then(resolve => {
+            results.push(result);
         }));
     }
     Promise.all(resultsPromise).then(() =>
@@ -87,12 +81,9 @@ const getExistingPoojas = ((poojaCountPromise) => {
             const randomPoojaNames = getRandomStringArray(false, poojasToAdd);
             const randomPoojaPromises = randomPoojaNames.map(poojaName => {
                 let randomPooja = { poojaName };
-                return poojaKeys.reduce((p, currVal) => {
-                    return p.then((prevVal) => {
-                        randomPooja[currVal] = getRandomData(Pooja.schema.obj[currVal], currVal);
-                        return new Promise(resolve => resolve(randomPooja));
-                    });
-                }, Promise.resolve());
+                return Promise.all(poojaKeys.map(prop => {
+                    return getRandomData(Pooja.schema.obj[prop], prop).then(resolve => randomPooja[prop] = resolve);
+                })).then(resolve => randomPooja);
             });
             return Promise.all(randomPoojaPromises).then(randomPoojas =>
                 new Promise((resolve, reject) => {
@@ -100,10 +91,10 @@ const getExistingPoojas = ((poojaCountPromise) => {
                         if (err) reject(err);
                         resolve('Insert Complete');
                     });
-                }));
+                })).catch(error => {
+                    throw error;
+                });
         }
-    }).catch(error => {
-        throw error;
     });
     return () =>
         !isInsertResolved ? insertPromise.then(insertMany =>
