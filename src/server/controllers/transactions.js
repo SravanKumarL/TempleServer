@@ -132,11 +132,11 @@ exports.getReports = function (req, res, next) {
 
   if (!ReportName || !selectedDates || (ReportName === Constants.Pooja && !pooja))
     return res.json({ error: 'Search criteria is invalid' });
-  
+
   let report = [...reportMapping[ReportName]];
   if (!report)
     return res.json({ error: 'Invalid report name' });
-  
+
   //Only if fetchOthers is defined with a boolean value, it will be included in search criteria, else it shall be excluded
   let searchObj = getSearchObj(ReportName, selectedDates, pooja, fetchOthers);
 
@@ -146,30 +146,35 @@ exports.getReports = function (req, res, next) {
 
   const findTransactions = () => Transaction.find(searchObj, {}, getPaginationOptions(take, skip)).lean().select(report.join(' ')).exec(function (error, results) {
     if (error) return res.json({ error });
+    let totalAmountProp;
     if (results.length && results.length > 0) {
       results = results.map(result => slice(report, result));
       //Transform results for only management report
       if (ReportName === Constants.Management) {
         let pooja = '';
         results = results.reduce((accumulator, currValue) => {
+          const category = currValue.chequeNo ? 'cheque' : 'cash';
+          accumulator.totalAmount[category] += currValue.amount;
           pooja = accumulator[currValue.pooja];
           accumulator[currValue.pooja] = { ...(pooja || currValue), 'total poojas': pooja && pooja['total poojas'] ? pooja['total poojas'] + 1 : 1 };
           return accumulator;
-        }, {});
-        results = Object.keys(results).map(key => {
+        }, { totalAmount: { cheque: 0, cash: 0 } });
+        const { totalAmount, ...restProps } = results;
+        totalAmountProp = totalAmount;
+        results = Object.keys(restProps).map(key => {
           const { amount, ...rest } = results[key];
           return { ...rest, 'total amount': amount * rest['total poojas'] };
         });
       }
     }
-    return res.json(populateCount(fetchCount, { rows: results }, totalCount));
+    return res.json(populateCount(fetchCount, (totalAmountProp ? { rows: results, totalAmount: totalAmountProp } : { rows: results }), totalCount));
   });
 
   //Include others in the response payload too
   if (fetchOthers === true) {
     report.push('others');
   }
-  
+
   //Fetch count only on demand
   if (fetchCount) {
     Promise.resolve(Transaction.find(searchObj).count((error, count) => {
