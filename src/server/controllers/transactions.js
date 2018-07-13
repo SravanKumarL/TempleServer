@@ -123,52 +123,59 @@ exports.searchTransactions = function (req, res, next) {
   }
 }
 
+exports.getTotalAmount = function (req, res, next) {
+  const report = [...reportMapping[req.body.searchCriteria.ReportName]]
+  let searchObj = {};
+  try {
+    searchObj = getResultantSearchObj(req, res, undefined);
+  }
+  catch (ex) {
+    return res.json({ error: ex.message });
+  }
+  Transaction.find(searchObj).lean().select(report.join(' ')).exec(function (error, results) {
+    if (error) return res.json({ error });
+    const totalAmount = results.reduce((accumulator, currValue) => {
+      const category = currValue.chequeNo ? 'cheque' : 'cash';
+      accumulator.totalAmount[category] += currValue.amount;
+      return accumulator;
+    }, { totalAmount: { cheque: 0, cash: 0 } });
+    return res.json({ totalAmount });
+  });
+}
+
 exports.getReports = function (req, res, next) {
-  const searchCriteria = req.body;
   const fetchCount = req.query.fetchCount !== undefined ? castToBoolean(req.query.fetchCount, false) : false;
   const fetchOthers = req.query.fetchOthers !== undefined ? castToBoolean(req.query.fetchOthers) : undefined;
   let totalCount = 0;
-  const { ReportName, selectedDates, pooja, skip, take, createdBy } = searchCriteria;
-
-  if (!ReportName || !selectedDates || (ReportName === Constants.Pooja && !pooja))
-    return res.json({ error: 'Search criteria is invalid' });
-
-  let report = [...reportMapping[ReportName]];
-  if (!report)
-    return res.json({ error: 'Invalid report name' });
-
-  //Only if fetchOthers is defined with a boolean value, it will be included in search criteria, else it shall be excluded
-  let searchObj = getSearchObj(ReportName, selectedDates, pooja, fetchOthers);
-
-  //Add createdBy filter
-  if (ReportName === Constants.Management)
-    searchObj = { ...searchObj, createdBy };
-
-  const findTransactions = () => Transaction.find(searchObj, {}, getPaginationOptions(take, skip)).lean().select(report.join(' ')).exec(function (error, results) {
-    if (error) return res.json({ error });
-    let totalAmountProp;
-    if (results.length && results.length > 0) {
-      results = results.map(result => slice(report, result));
-      //Transform results for only management report
-      if (ReportName === Constants.Management) {
-        let pooja = '';
-        results = results.reduce((accumulator, currValue) => {
-          const category = currValue.chequeNo ? 'cheque' : 'cash';
-          accumulator.totalAmount[category] += currValue.amount;
-          pooja = accumulator[currValue.pooja];
-          accumulator[currValue.pooja] = { ...(pooja || currValue), 'total poojas': pooja && pooja['total poojas'] ? pooja['total poojas'] + 1 : 1 };
-          return accumulator;
-        }, { totalAmount: { cheque: 0, cash: 0 } });
-        const { totalAmount, ...restProps } = results;
-        totalAmountProp = totalAmount;
-        results = Object.keys(restProps).map(key => {
-          const { amount, ...rest } = results[key];
-          return { ...rest, 'total amount': amount * rest['total poojas'] };
-        });
+  const { skip, take } = req.body.searchCriteria
+  let searchObj = {};
+  try {
+    searchObj = getResultantSearchObj(req);
+  }
+  catch (ex) {
+    return res.json({ error: ex.message });
+  }
+  const findTransactions = () => Transaction.find(searchObj, {}, getPaginationOptions(take, skip)).lean().
+    select(report.join(' ')).exec(function (error, results) {
+      if (error) return res.json({ error });
+      if (results.length && results.length > 0) {
+        results = results.map(result => slice(report, result));
+        //Transform results for only management report
+        if (ReportName === Constants.Management) {
+          let pooja = '';
+          results = results.reduce((accumulator, currValue) => {
+            pooja = accumulator[currValue.pooja];
+            accumulator[currValue.pooja] = { ...(pooja || currValue), 'total poojas': pooja && (pooja['total poojas'] ? pooja['total poojas'] + 1 : 1) };
+            return accumulator;
+          }, {});
+          results = Object.keys(restProps).map(key => {
+            const { amount, ...rest } = results[key];
+            return { ...rest, 'total amount': amount * rest['total poojas'] };
+          });
+        }
       }
-    }
-    return res.json(populateCount(fetchCount, (totalAmountProp ? { rows: results, totalAmount: totalAmountProp } : { rows: results }), totalCount));
-  });
+      return res.json(populateCount(fetchCount, { rows: results }, totalCount));
+    });
 
   //Include others in the response payload too
   if (fetchOthers === true) {
@@ -213,4 +220,25 @@ const getSearchObj = (reportName, selectedDates, pooja, fetchOthers) => {
     return { ...searchObj, pooja: { "$in": pooja.split(',') } };
   else
     return searchObj;
+}
+
+const getResultantSearchObj = (req, fetchOthers = null) => {
+  if (fetchOthers === null)
+    fetchOthers = req.query.fetchOthers !== undefined ? castToBoolean(req.query.fetchOthers) : undefined;
+  const { ReportName, selectedDates, pooja, createdBy } = req.body.searchCriteria;
+
+  if (!ReportName || !selectedDates || (ReportName === Constants.Pooja && !pooja))
+    throw new Error('Search criteria is invalid');
+
+  let report = [...reportMapping[ReportName]];
+  if (!report)
+    throw new Error('Invalid report name');
+
+  //Only if fetchOthers is defined with a boolean value, it will be included in search criteria, else it shall be excluded
+  let searchObj = getSearchObj(ReportName, selectedDates, pooja, fetchOthers);
+
+  //Add createdBy filter
+  if (ReportName === Constants.Management)
+    searchObj = { ...searchObj, createdBy };
+  return searchObj;
 }
