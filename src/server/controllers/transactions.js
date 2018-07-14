@@ -124,10 +124,10 @@ exports.searchTransactions = function (req, res, next) {
 }
 
 exports.getTotalAmount = function (req, res, next) {
-  const report = [...reportMapping[req.body.searchCriteria.ReportName]]
+  const report = [...reportMapping[req.body.ReportName]]
   let searchObj = {};
   try {
-    searchObj = getResultantSearchObj(req, res, undefined);
+    searchObj = getResultantSearchObj(req, null);
   }
   catch (ex) {
     return res.json({ error: ex.message });
@@ -136,9 +136,9 @@ exports.getTotalAmount = function (req, res, next) {
     if (error) return res.json({ error });
     const totalAmount = results.reduce((accumulator, currValue) => {
       const category = currValue.chequeNo ? 'cheque' : 'cash';
-      accumulator.totalAmount[category] += currValue.amount;
+      accumulator[category] += currValue.amount;
       return accumulator;
-    }, { totalAmount: { cheque: 0, cash: 0 } });
+    }, { cheque: 0, cash: 0 });
     return res.json({ totalAmount });
   });
 }
@@ -146,11 +146,13 @@ exports.getTotalAmount = function (req, res, next) {
 exports.getReports = function (req, res, next) {
   const fetchCount = req.query.fetchCount !== undefined ? castToBoolean(req.query.fetchCount, false) : false;
   const fetchOthers = req.query.fetchOthers !== undefined ? castToBoolean(req.query.fetchOthers) : undefined;
+  const ReportName = req.body.ReportName;
+  let report = [...reportMapping[ReportName]]
   let totalCount = 0;
-  const { skip, take } = req.body.searchCriteria
+  const { skip, take } = req.body;
   let searchObj = {};
   try {
-    searchObj = getResultantSearchObj(req);
+    searchObj = getResultantSearchObj(req, fetchOthers);
   }
   catch (ex) {
     return res.json({ error: ex.message });
@@ -165,10 +167,10 @@ exports.getReports = function (req, res, next) {
           let pooja = '';
           results = results.reduce((accumulator, currValue) => {
             pooja = accumulator[currValue.pooja];
-            accumulator[currValue.pooja] = { ...(pooja || currValue), 'total poojas': pooja && (pooja['total poojas'] ? pooja['total poojas'] + 1 : 1) };
+            accumulator[currValue.pooja] = { ...(pooja || currValue), 'total poojas': (pooja && (pooja['total poojas'] ? pooja['total poojas'] + 1 : 1)) || 1 };
             return accumulator;
           }, {});
-          results = Object.keys(restProps).map(key => {
+          results = Object.keys(results).map(key => {
             const { amount, ...rest } = results[key];
             return { ...rest, 'total amount': amount * rest['total poojas'] };
           });
@@ -225,7 +227,7 @@ const getSearchObj = (reportName, selectedDates, pooja, fetchOthers) => {
 const getResultantSearchObj = (req, fetchOthers = null) => {
   if (fetchOthers === null)
     fetchOthers = req.query.fetchOthers !== undefined ? castToBoolean(req.query.fetchOthers) : undefined;
-  const { ReportName, selectedDates, pooja, createdBy } = req.body.searchCriteria;
+  const { ReportName, selectedDates, pooja, createdBy } = req.body;
 
   if (!ReportName || !selectedDates || (ReportName === Constants.Pooja && !pooja))
     throw new Error('Search criteria is invalid');
