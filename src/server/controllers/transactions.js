@@ -159,7 +159,7 @@ exports.getReports = function (req, res, next) {
     return res.json({ error: ex.message });
   }
   const findTransactions = () => {
-    if (ReportName === Constants.Management) {
+    if (ReportName === Constants.Management && fetchCount) {
       const pagingOptions = getPaginationOptions(take, skip);
       take = pagingOptions.limit || allResults.length;
       skip = pagingOptions.skip || 0;
@@ -172,6 +172,8 @@ exports.getReports = function (req, res, next) {
           if (results.length && results.length > 0) {
             results = results.map(result => slice(report, result));
           }
+          if (ReportName === Constants.Management)
+            results = transformManagementResults(results);
           return res.json(populateCount(fetchCount, { rows: results }, totalCount));
         });
     }
@@ -188,23 +190,10 @@ exports.getReports = function (req, res, next) {
         select(report.join(' ')).exec(function (error, results) {
           if (error) return res.json({ error });
           if (results.length && results.length > 0) {
-            //Transform results for only management report
             results = results.map(result => slice(report, result));
-            let pooja = '';
-            results = results.reduce((accumulator, currValue) => {
-              pooja = accumulator[currValue.pooja];
-              accumulator[currValue.pooja] = {
-                ...(pooja || currValue),
-                'total poojas': (pooja && (pooja['total poojas'] ? pooja['total poojas'] + 1 : 1)) || 1
-              };
-              return accumulator;
-            }, {});
-            results = Object.keys(results).map(key => {
-              const { amount, ...rest } = results[key];
-              return { ...rest, 'total amount': amount * rest['total poojas'] };
-            });
-            allResults = results;
-            totalCount = results.length;
+            //Transform results for only management report
+            allResults = transformManagementResults(results);
+            totalCount = allResults.length;
             resolve(totalCount);
           }
         })).then(findTransactions);
@@ -268,4 +257,20 @@ const getResultantSearchObj = (req, fetchOthers = null) => {
   if (ReportName === Constants.Management)
     searchObj = { ...searchObj, createdBy };
   return searchObj;
+}
+const transformManagementResults = (results) => {
+  let pooja = '';
+  let transFormedResults = results.reduce((accumulator, currValue) => {
+    pooja = accumulator[currValue.pooja];
+    accumulator[currValue.pooja] = {
+      ...(pooja || currValue),
+      'total poojas': (pooja && (pooja['total poojas'] ? pooja['total poojas'] + 1 : 1)) || 1
+    };
+    return accumulator;
+  }, {});
+  transFormedResults = Object.keys(transFormedResults).map(key => {
+    const { amount, ...rest } = transFormedResults[key];
+    return { ...rest, 'total amount': amount * rest['total poojas'] };
+  });
+  return transFormedResults;
 }
