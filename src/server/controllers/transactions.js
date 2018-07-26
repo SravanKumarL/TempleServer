@@ -264,7 +264,9 @@ const transformManagementResults = (results) => {
     pooja = accumulator[currValue.pooja];
     accumulator[currValue.pooja] = {
       ...(pooja || currValue),
-      'total poojas': (pooja && (pooja['total poojas'] ? pooja['total poojas'] + 1 : 1)) || 1
+      'total poojas': (pooja && (pooja['total poojas'] ? pooja['total poojas'] + 1 : 1)) || 1,
+      'chequeNo': (pooja && pooja['chequeNo']) ? `${pooja['chequeNo']}${currValue.chequeNo ? `,${currValue.chequeNo}` : ''}` :
+        currValue.chequeNo
     };
     return accumulator;
   }, {});
