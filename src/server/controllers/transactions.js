@@ -16,6 +16,7 @@ exports.addTransaction = function (req, res, next) {
     numberOfDays,
     amount,
     createdBy,
+    formattedDates,
     others,
   } = req.body;
   const createdDate = parseDate(new Date());
@@ -53,6 +54,7 @@ exports.addTransaction = function (req, res, next) {
     createdBy,
     createdDate,
     others,
+    formattedDates
   });
   //save it to the db
   transaction.save(function (err) {
