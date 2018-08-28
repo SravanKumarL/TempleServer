@@ -16,12 +16,12 @@ const logToConsoleAndLogFile = (text, type) => {
 }
 const logType = { error: 'error', warn: 'warn', fatal: 'fatal' };
 const config = {
-  mongoURL: process.env.MONGODB_URI || 'mongodb://localhost:/temple',
+  mongoURL: process.env.MONGODB_URI || 'mongodb://localhost:27017/temple',
   port: process.env.PORT || 7000,
 };
 //DB Setup 
 // mongoose.connect(`mongodb://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_SERVER}`);
-mongoose.connect(`${config.mongoURL}`);
+mongoose.connect(`${config.mongoURL}`, { useNewUrlParser: true });
 
 const app = express();
 const router = require('./router');
