@@ -12,7 +12,7 @@ const constants = {
     Management: 'Management',
     Users: 'users',
 }
-const ManagementReport = ['pooja', 'amount','chequeNo'];
+const ManagementReport = ['pooja', 'amount', 'chequeNo'];
 const PoojaReport = ['names', 'gothram', 'nakshatram', 'pooja'];
 const AccountReport = ['names', 'phoneNumber', 'pooja', 'amount', 'chequeNo', 'bankName', 'createdDate'];
 exports.Constants = constants;
@@ -82,3 +82,5 @@ exports.populateCount = (fetchCount = false, returnObj = {}, totalCount = 0) => 
     return { ...returnObj, totalCount };
 }
 exports.castToBoolean = (value, defCast) => value === 'true' ? true : (value === 'false' ? false : defCast);
+exports.convertToProperCase = stringValue =>
+    stringValue.split(' ').map(val=> val[0].toUpperCase() + val.toLowerCase().slice(1)).join(' ');
