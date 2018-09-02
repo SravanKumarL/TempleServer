@@ -16,6 +16,7 @@ exports.addTransaction = function (req, res, next) {
     numberOfDays,
     amount,
     createdBy,
+    formattedDates,
     others,
   } = req.body;
   const createdDate = parseDate(new Date());
@@ -53,6 +54,7 @@ exports.addTransaction = function (req, res, next) {
     createdBy,
     createdDate,
     others,
+    formattedDates
   });
   //save it to the db
   transaction.save(function (err) {
@@ -136,9 +138,10 @@ exports.getTotalAmount = function (req, res, next) {
     if (error) return res.json({ error });
     const totalAmount = results.reduce((accumulator, currValue) => {
       const category = currValue.chequeNo ? 'cheque' : 'cash';
-      accumulator[category] += currValue.amount;
+      accumulator[category].value += currValue.amount;
+      accumulator[category].count += 1;
       return accumulator;
-    }, { cheque: 0, cash: 0 });
+    }, { cheque: { value: 0, count: 0 }, cash: { value: 0, count: 0 } });
     return res.json({ totalAmount });
   });
 }
@@ -159,11 +162,11 @@ exports.getReports = function (req, res, next) {
     return res.json({ error: ex.message });
   }
   const findTransactions = () => {
-    if (ReportName === Constants.Management && fetchCount) {
+    if (ReportName === Constants.Management) {
       const pagingOptions = getPaginationOptions(take, skip);
       take = pagingOptions.limit || allResults.length;
       skip = pagingOptions.skip || 0;
-      return res.json(populateCount(fetchCount, { rows: allResults.slice(skip > 1 ? skip - 1 : 0, take) }, totalCount));
+      return res.json(populateCount(fetchCount, { rows: allResults.slice(skip, take) }, totalCount));
     }
     else {
       Transaction.find(searchObj, {}, getPaginationOptions(take, skip)).lean().
@@ -184,18 +187,18 @@ exports.getReports = function (req, res, next) {
   }
 
   //Fetch count only on demand
-  if (fetchCount) {
+  if (fetchCount || ReportName === Constants.Management) {
     if (ReportName === Constants.Management) {
-      new Promise((resolve, reject) => Transaction.find(searchObj).lean().
-        select(report.join(' ')).exec(function (error, results) {
+      new Promise((resolve, reject) => Transaction.find(searchObj).lean()
+        .select(report.join(' ')).exec(function (error, results) {
           if (error) return res.json({ error });
           if (results.length && results.length > 0) {
             results = results.map(result => slice(report, result));
             //Transform results for only management report
             allResults = transformManagementResults(results);
             totalCount = allResults.length;
-            resolve(totalCount);
           }
+          resolve(totalCount);
         })).then(findTransactions);
     }
     else {
@@ -260,19 +263,22 @@ const getResultantSearchObj = (req, fetchOthers = null) => {
 }
 const transformManagementResults = (results) => {
   let pooja = '';
+  let currPoojaAmount = 0;
   let transFormedResults = results.reduce((accumulator, currValue) => {
     pooja = accumulator[currValue.pooja];
+    currPoojaAmount = currValue.amount || 0;
     accumulator[currValue.pooja] = {
       ...(pooja || currValue),
       'total poojas': (pooja && (pooja['total poojas'] ? pooja['total poojas'] + 1 : 1)) || 1,
+      'total amount': (pooja && (pooja['total amount'] ? (pooja['total amount'] + currPoojaAmount) : currPoojaAmount))
+        || currPoojaAmount,
       'chequeNo': (pooja && pooja['chequeNo']) ? `${pooja['chequeNo']}${currValue.chequeNo ? `,${currValue.chequeNo}` : ''}` :
         currValue.chequeNo
     };
     return accumulator;
   }, {});
-  transFormedResults = Object.keys(transFormedResults).map(key => {
+  return Object.keys(transFormedResults).map(key => {
     const { amount, ...rest } = transFormedResults[key];
-    return { ...rest, 'total amount': amount * rest['total poojas'] };
+    return rest;
   });
-  return transFormedResults;
 }
