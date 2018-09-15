@@ -65,7 +65,7 @@ const getRandomDate = () => {
 
 const getPoojaCountPromise = () =>
     new Promise((resolve, reject) => {
-        Pooja.count().exec((err, count) => {
+        Pooja.estimatedDocumentCount().exec((err, count) => {
             if (err) reject(err);
             resolve(count);
         });
