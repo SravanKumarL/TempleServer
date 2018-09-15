@@ -31,7 +31,7 @@ exports.addTransaction = function (req, res, next) {
   if (!names || !pooja || !phoneNumber) {
     return res.status(422).send({ error: 'You must provide phone number names and pooja' });
   }
-  // Transaction.count({}, function (error, count) {
+  // Transaction.estimatedDocumentCount({}, function (error, count) {
   //   if (error)
   //     return res.json({ message: error });
   // }).then((resolve, reject) => {
@@ -92,7 +92,7 @@ exports.searchTransactions = function (req, res, next) {
     // const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
     const searchObject = { names: { $regex: `(?i)${searchValue}` } };
     if (fetchCount) {
-      Transaction.find(searchObject).count((error, count) => {
+      Transaction.find(searchObject).estimatedDocumentCount((error, count) => {
         if (error)
           return res.json({ error });
         totalCount = count;
@@ -109,7 +109,7 @@ exports.searchTransactions = function (req, res, next) {
     //{ $where: `/${searchValue}/.test(this.phoneNumber)` } This also works but has a chance of SQL injection
     const whereClause = { $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` };
     if (fetchCount) {
-      Transaction.find(whereClause).count((error, count) => {
+      Transaction.find(whereClause).estimatedDocumentCount((error, count) => {
         if (error)
           return res.json({ error });
         totalCount = count;
@@ -134,15 +134,20 @@ exports.getTotalAmount = function (req, res, next) {
   catch (ex) {
     return res.json({ error: ex.message });
   }
-  Transaction.find(searchObj).lean().select(report.join(' ')).exec(function (error, results) {
+  Transaction.find(searchObj).lean().exec(function (error, results) {
     if (error) return res.json({ error });
+    const cheques = results.filter(result => result.chequeNo).map(result => ({
+      chequeNo: result.chequeNo,
+      bankName: result.bankName,
+      amount: result.amount
+    }));
     const totalAmount = results.reduce((accumulator, currValue) => {
       const category = currValue.chequeNo ? 'cheque' : 'cash';
       accumulator[category].value += currValue.amount;
       accumulator[category].count += 1;
       return accumulator;
     }, { cheque: { value: 0, count: 0 }, cash: { value: 0, count: 0 } });
-    return res.json({ totalAmount });
+    return res.json({ totalAmount, cheques });
   });
 }
 
@@ -202,7 +207,7 @@ exports.getReports = function (req, res, next) {
         })).then(findTransactions);
     }
     else {
-      Promise.resolve(Transaction.find(searchObj).count((error, count) => {
+      Promise.resolve(Transaction.find(searchObj).estimatedDocumentCount((error, count) => {
         if (error)
           return res.json({ error });
         totalCount = count;

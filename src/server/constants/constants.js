@@ -48,17 +48,20 @@ exports.parseDate = (date) => {
         if (typeof date === 'number' || typeof date === 'object')
             return getCurrentDate(new Date(date));
         else if (typeof date === 'string') {
-            date = getDate(date);
-            if (date && typeof date === 'object')
-                return getCurrentDate(date);
+            let newDate = getDate(date);
+            if (isNaN(newDate.getDate())) {
+                newDate = new Date(Date.parse(date));
+            }
+            if (newDate && typeof newDate === 'object')
+                return getCurrentDate(newDate);
             else
-                return getCurrentDate();
+                return null;
         }
         else
-            return getCurrentDate();
+            return null;
     }
     catch (exception) {
-        return getCurrentDate();
+        return null;
     }
 }
 exports.getModelProps = (model) => Object.getOwnPropertyNames(model.schema.obj);
@@ -83,4 +86,4 @@ exports.populateCount = (fetchCount = false, returnObj = {}, totalCount = 0) => 
 }
 exports.castToBoolean = (value, defCast) => value === 'true' ? true : (value === 'false' ? false : defCast);
 exports.convertToProperCase = stringValue =>
-    stringValue.split(' ').map(val=> val[0].toUpperCase() + val.toLowerCase().slice(1)).join(' ');
+    stringValue.split(' ').map(val => val[0].toUpperCase() + val.toLowerCase().slice(1)).join(' ');

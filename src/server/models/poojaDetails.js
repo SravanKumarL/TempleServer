@@ -7,6 +7,7 @@ const poojaSchema = new Schema({
   id: String,
   poojaName: { type: String, sparse: true },
   amount: Number,
+  time: String
 });
 poojaSchema.pre('save', function (next, errCb) {
   this.poojaName = convertToProperCase(this.poojaName);
