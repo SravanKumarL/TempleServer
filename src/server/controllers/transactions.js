@@ -31,7 +31,7 @@ exports.addTransaction = function (req, res, next) {
   if (!names || !pooja || !phoneNumber) {
     return res.status(422).send({ error: 'You must provide phone number names and pooja' });
   }
-  // Transaction.estimatedDocumentCount({}, function (error, count) {
+  // Transaction.countDocuments({}, function (error, count) {
   //   if (error)
   //     return res.json({ message: error });
   // }).then((resolve, reject) => {
@@ -92,7 +92,7 @@ exports.searchTransactions = function (req, res, next) {
     // const regex = new RegExp(".*" + searchValue.toLowerCase() + ".*", 'i');
     const searchObject = { names: { $regex: `(?i)${searchValue}` } };
     if (fetchCount) {
-      Transaction.find(searchObject).estimatedDocumentCount((error, count) => {
+      Transaction.find(searchObject).countDocuments((error, count) => {
         if (error)
           return res.json({ error });
         totalCount = count;
@@ -109,7 +109,7 @@ exports.searchTransactions = function (req, res, next) {
     //{ $where: `/${searchValue}/.test(this.phoneNumber)` } This also works but has a chance of SQL injection
     const whereClause = { $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` };
     if (fetchCount) {
-      Transaction.find(whereClause).estimatedDocumentCount((error, count) => {
+      Transaction.find(whereClause).countDocuments((error, count) => {
         if (error)
           return res.json({ error });
         totalCount = count;

@@ -37,11 +37,11 @@ const getSearchObj = (collection, reqParams) => (collection === Constants.Users 
 //     const segments = req.path.split('/');
 //     switch (segments[1]) {
 //         case Constants.Poojas:
-//             return getModel(Constants.Poojas).estimatedDocumentCount({}, handleCount);
+//             return getModel(Constants.Poojas).countDocuments({}, handleCount);
 //         case Constants.Users:
-//             return getModel(Constants.Users).estimatedDocumentCount({}, handleCount);
+//             return getModel(Constants.Users).countDocuments({}, handleCount);
 //         default:
-//             return getModel(Constants.Transactions).estimatedDocumentCount({}, handleCount);
+//             return getModel(Constants.Transactions).countDocuments({}, handleCount);
 //     }
 // }
 exports.entity = function (collection) {
@@ -54,7 +54,7 @@ exports.entity = function (collection) {
                 [Constants.Users]: 'username'
             }
             const saveEntity = () => {
-                // model.estimatedDocumentCount({}, function (error, count) {
+                // model.countDocuments({}, function (error, count) {
                 //     if (error)
                 //         return res.json({ error });
                 // }).then((resolve, reject) => {
@@ -94,7 +94,7 @@ exports.entity = function (collection) {
             const paginationOptions = getPaginationOptions(take, skip);
             let totalCount = 0;
             if (fetchCount) {
-                model.find().estimatedDocumentCount((error, count) => {
+                model.find().countDocuments((error, count) => {
                     if (error)
                         return res.json({ error });
                     totalCount = count;
