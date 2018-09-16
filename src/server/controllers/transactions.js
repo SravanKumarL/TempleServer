@@ -207,7 +207,7 @@ exports.getReports = function (req, res, next) {
         })).then(findTransactions);
     }
     else {
-      Promise.resolve(Transaction.find(searchObj).estimatedDocumentCount((error, count) => {
+      Promise.resolve(Transaction.find(searchObj).countDocuments((error, count) => {
         if (error)
           return res.json({ error });
         totalCount = count;
