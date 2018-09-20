@@ -269,12 +269,15 @@ const getResultantSearchObj = (req, fetchOthers = null) => {
 const transformManagementResults = (results) => {
   let pooja = '';
   let currPoojaAmount = 0;
+  let numberOfDays = 1;
   let transFormedResults = results.reduce((accumulator, currValue) => {
     pooja = accumulator[currValue.pooja];
+    numberOfDays = currValue.numberOfDays;
     currPoojaAmount = currValue.amount || 0;
     accumulator[currValue.pooja] = {
       ...(pooja || currValue),
-      'total poojas': (pooja && (pooja['total poojas'] ? pooja['total poojas'] + 1 : 1)) || 1,
+      'total poojas': (pooja && (pooja['total poojas'] ? pooja['total poojas'] + numberOfDays : numberOfDays))
+        || numberOfDays,
       'total amount': (pooja && (pooja['total amount'] ? (pooja['total amount'] + currPoojaAmount) : currPoojaAmount))
         || currPoojaAmount,
       'chequeNo': (pooja && pooja['chequeNo']) ? `${pooja['chequeNo']}${currValue.chequeNo ? `,${currValue.chequeNo}` : ''}` :
@@ -283,7 +286,7 @@ const transformManagementResults = (results) => {
     return accumulator;
   }, {});
   return Object.keys(transFormedResults).map(key => {
-    const { amount, ...rest } = transFormedResults[key];
+    const { amount, numberOfDays, ...rest } = transFormedResults[key];
     return rest;
   });
 }

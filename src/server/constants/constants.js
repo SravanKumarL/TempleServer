@@ -12,7 +12,7 @@ const constants = {
     Management: 'Management',
     Users: 'users',
 }
-const ManagementReport = ['pooja', 'amount', 'chequeNo'];
+const ManagementReport = ['pooja', 'amount', 'chequeNo', 'numberOfDays'];
 const PoojaReport = ['names', 'gothram', 'nakshatram', 'pooja'];
 const AccountReport = ['names', 'phoneNumber', 'pooja', 'amount', 'chequeNo', 'bankName', 'createdDate'];
 exports.Constants = constants;
