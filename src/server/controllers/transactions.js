@@ -109,11 +109,11 @@ exports.searchTransactions = function (req, res, next) {
     //{ $where: `/${searchValue}/.test(this.phoneNumber)` } This also works but has a chance of SQL injection
     const whereClause = { $where: `function() { return this.phoneNumber.toString().match(/${searchValue}/) != null; }` };
     if (fetchCount) {
-      Transaction.find(whereClause).countDocuments((error, count) => {
+      Transaction.count(whereClause, (error, count) => {
         if (error)
           return res.json({ error });
         totalCount = count;
-      })
+      });
     }
     Transaction.find(whereClause, {}, getPaginationOptions(take, skip)).lean()
       .exec((err, transactions) => {
@@ -126,7 +126,6 @@ exports.searchTransactions = function (req, res, next) {
 }
 
 exports.getTotalAmount = function (req, res, next) {
-  const report = [...reportMapping[req.body.ReportName]]
   let searchObj = {};
   try {
     searchObj = getResultantSearchObj(req, null);
@@ -174,8 +173,8 @@ exports.getReports = function (req, res, next) {
       return res.json(populateCount(fetchCount, { rows: allResults.slice(skip, take) }, totalCount));
     }
     else {
-      Transaction.find(searchObj, {}, getPaginationOptions(take, skip)).lean().
-        select(report.join(' ')).exec(function (error, results) {
+      Transaction.find(searchObj, {}, getPaginationOptions(take, skip)).lean()
+        .select(report.join(' ')).exec(function (error, results) {
           if (error) return res.json({ error });
           if (results.length && results.length > 0) {
             results = results.map(result => slice(report, result));
