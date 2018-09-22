@@ -13,7 +13,7 @@ const constants = {
     Users: 'users',
 }
 const ManagementReport = ['pooja', 'amount', 'chequeNo', 'numberOfDays'];
-const PoojaReport = ['names', 'gothram', 'nakshatram', 'pooja'];
+const PoojaReport = ['names', 'gothram', 'nakshatram', 'pooja', 'formattedDates'];
 const AccountReport = ['names', 'phoneNumber', 'pooja', 'amount', 'chequeNo', 'bankName', 'createdDate'];
 exports.Constants = constants;
 exports.reportMapping = {

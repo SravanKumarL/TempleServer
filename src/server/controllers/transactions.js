@@ -138,7 +138,8 @@ exports.getTotalAmount = function (req, res, next) {
     const cheques = results.filter(result => result.chequeNo).map(result => ({
       chequeNo: result.chequeNo,
       bankName: result.bankName,
-      amount: result.amount
+      amount: result.amount,
+      pooja: result.pooja
     }));
     const totalAmount = results.reduce((accumulator, currValue) => {
       const category = currValue.chequeNo ? 'cheque' : 'cash';
@@ -177,7 +178,7 @@ exports.getReports = function (req, res, next) {
         .select(report.join(' ')).exec(function (error, results) {
           if (error) return res.json({ error });
           if (results.length && results.length > 0) {
-            results = results.map(result => slice(report, result));
+            results = results.map(result => slice(report, result, { formattedDates: 'Selected Dates' }));
           }
           if (ReportName === Constants.Management)
             results = transformManagementResults(results);
@@ -217,9 +218,15 @@ exports.getReports = function (req, res, next) {
     findTransactions();
 }
 
-const slice = (array, obj) => {
+const slice = (array, obj, mapping = {}) => {
   let slicedObj = {};
   array.forEach(x => slicedObj[x] = obj[x]);
+  Object.keys(mapping).forEach(map => {
+    if (array.indexOf(map) !== -1) {
+      slicedObj[mapping[map]] = slicedObj[map];
+      delete slicedObj[map];
+    }
+  });
   return slicedObj;
 }
 const getSearchObj = (reportName, selectedDates, pooja, fetchOthers) => {
