@@ -1,3 +1,4 @@
+const { getCurrentDate } = require('../constants/constants');
 const jwt = require('jwt-simple');
 const Users = require('../models/user');
 const User = Users.User;
@@ -27,7 +28,8 @@ exports.signup = function (req, res, next) {
   const user = new User({
     username: username,
     password: password,
-    role: role
+    role: role,
+    createdDate: getCurrentDate()
   });
   user.save(function (err) {
     if (err) { return next(err); }

@@ -1,7 +1,11 @@
 const Users = require('../models/user');
 const User = Users.User;
 const hashPassword = Users.hashPassword;
-const { Constants, getModelProps, getPaginationOptions, populateCount } = require('../constants/constants');
+const { Constants,
+    getModelProps,
+    getPaginationOptions,
+    populateCount,
+    getCurrentDate } = require('../constants/constants');
 const uuidv1 = require('uuid/v1');
 const Pooja = require('../models/poojaDetails');
 const Transaction = require('../models/transactions');
@@ -61,6 +65,7 @@ exports.entity = function (collection) {
                 //     if (reject)
                 //         return res.json({ error: reject });
                 let entity = populateModel(model, req.body, uuidv1());
+                entity.createdDate = getCurrentDate();
                 if (entity === null) {
                     modelProps = modelProps.filter(modelProp => modelProp !== 'id');
                     return res.status(422).send({ error: `You must provide ${modelProps.slice(0, modelProps.length - 1).join(', ')} and ${modelProps[modelProps.length - 1]}` });

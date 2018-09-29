@@ -1,3 +1,4 @@
+const { getCurrentDate } = require('../constants/constants');
 const Pooja = require('../models/poojaDetails');
 
 exports.addPooja = function (req, res, next) {
@@ -13,6 +14,7 @@ exports.addPooja = function (req, res, next) {
   const pooja = new Pooja({
     poojaName: poojaName,
     amount: amount,
+    createdDate: getCurrentDate()
   });
 
   //save it to the db

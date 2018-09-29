@@ -27,4 +27,4 @@ service/daemon
 *.log
 
 #backup
-backupdump*.json
+backup*.json

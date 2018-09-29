@@ -7,6 +7,7 @@ const userSchema = new Schema({
   username: { type: String, unique: true, lowercase: true, },
   password: String,
   role: String,
+  createdDate: String
 });
 
 //On Save Hook encrypt password,
@@ -17,11 +18,11 @@ userSchema.pre('save', function (next) {
   hashPassword(user.password).then(hash => {
     user.password = hash;
     next();
-  }).catch(error=>next(error));
+  }).catch(error => next(error));
 })
 
 const hashPassword = (password) => {
-  return new Promise((resolve,reject)=>{
+  return new Promise((resolve, reject) => {
     // Generate a salt, then run call back
     bcrypt.genSalt(10, function (err, salt) {
       if (err) { return reject(err); }
