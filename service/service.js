@@ -1,4 +1,5 @@
 const path = require('path');
+const { backup } = require(path.join(__dirname, './backup'));
 const logger = require(__dirname + path.sep + 'helper').getLogger('serviceLog.log');
 const stopService = (code) => {
     logger.fatal('Stopping Temple Server ...');
@@ -24,3 +25,7 @@ process.on('unhandledRejection', (reason, p) => {
 });
 logger.info('Starting Temple Server ...');
 setTimeout(() => require(path.join(__dirname, '../src/server/index')), 100);
+const times = [{ hr: 14, min: 0, sec: 0 }, { hr: 22, min: 0, sec: 0 }];
+times.forEach(time => setTimeout(backup,
+    new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), time.hr, time.min, time.sec, 0)
+        .getTime() - Date.now()));
