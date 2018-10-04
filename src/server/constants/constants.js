@@ -11,6 +11,8 @@ const constants = {
     Pooja: 'Pooja',
     Management: 'Management',
     Users: 'users',
+    backup: 'backup',
+    poojaCollection:'poojadetails'
 }
 const ManagementReport = ['pooja', 'amount', 'chequeNo', 'numberOfDays'];
 const PoojaReport = ['names', 'gothram', 'nakshatram', 'pooja', 'formattedDates'];
