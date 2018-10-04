@@ -5,6 +5,5 @@
     "token_uri": "https://www.googleapis.com/oauth2/v3/token",
     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
     "client_secret": "ckmDJ8qeLOmow37pfJmaFXTG",
-    "scopes": ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/drive.file"],
-    "api_key":"AIzaSyCWIluxvPB6maiQX9Ky-xlSo6Vb3IwmBgo"
+    "scopes": ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/drive.file"]
 }
