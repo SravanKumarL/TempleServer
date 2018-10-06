@@ -12,20 +12,21 @@ const constants = {
     Management: 'Management',
     Users: 'users',
     backup: 'backup',
-    poojaCollection:'poojadetails'
+    restore: 'restore',
+    poojaCollection: 'poojadetails'
 }
 const ManagementReport = ['pooja', 'amount', 'chequeNo', 'numberOfDays'];
 const PoojaReport = ['names', 'gothram', 'nakshatram', 'pooja', 'formattedDates'];
 const AccountReport = ['names', 'phoneNumber', 'pooja', 'amount', 'chequeNo', 'bankName', 'createdDate'];
-exports.Constants = constants;
-exports.reportMapping = {
+module.exports.Constants = constants;
+module.exports.reportMapping = {
     'Accounts': AccountReport,
     'Pooja': PoojaReport,
     'Management': ManagementReport
 }
-exports.ManagementReport = ManagementReport;
-exports.PoojaReport = PoojaReport;
-exports.AccountReport = AccountReport;
+module.exports.ManagementReport = ManagementReport;
+module.exports.PoojaReport = PoojaReport;
+module.exports.AccountReport = AccountReport;
 const getCurrentDate = (date = new Date()) => {
     let today = date;
     let dd = today.getDate();
@@ -44,8 +45,8 @@ const getDate = (dateString) => {
     const parts = dateString.split('-');
     return new Date(Date.parse(`${parts[2]}-${parts[1]}-${parts[0]}`));
 }
-exports.getCurrentDate = getCurrentDate;
-exports.parseDate = (date) => {
+module.exports.getCurrentDate = getCurrentDate;
+module.exports.parseDate = (date) => {
     try {
         if (typeof date === 'number' || typeof date === 'object')
             return getCurrentDate(new Date(date));
@@ -66,8 +67,8 @@ exports.parseDate = (date) => {
         return null;
     }
 }
-exports.getModelProps = (model) => Object.getOwnPropertyNames(model.schema.obj);
-exports.getPaginationOptions = (pageSize, count) => {
+module.exports.getModelProps = (model) => Object.getOwnPropertyNames(model.schema.obj);
+module.exports.getPaginationOptions = (pageSize, count) => {
     let paginationOptions = {};
     pageSize = Number(pageSize);
     count = Number(count);
@@ -81,11 +82,11 @@ exports.getPaginationOptions = (pageSize, count) => {
         paginationOptions = { ...paginationOptions, limit: Number(bufferedPageSize) };
     return paginationOptions;
 }
-exports.populateCount = (fetchCount = false, returnObj = {}, totalCount = 0) => {
+module.exports.populateCount = (fetchCount = false, returnObj = {}, totalCount = 0) => {
     if (!fetchCount)
         return returnObj;
     return { ...returnObj, totalCount };
 }
-exports.castToBoolean = (value, defCast) => value === 'true' ? true : (value === 'false' ? false : defCast);
-exports.convertToProperCase = stringValue =>
+module.exports.castToBoolean = (value, defCast) => value === 'true' ? true : (value === 'false' ? false : defCast);
+module.exports.convertToProperCase = stringValue =>
     stringValue.split(' ').map(val => val[0].toUpperCase() + val.toLowerCase().slice(1)).join(' ');
