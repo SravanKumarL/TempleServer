@@ -24,6 +24,7 @@ package-lock.json
 
 #service
 service/daemon
+service/assets/
 *.log
 
 #backup
