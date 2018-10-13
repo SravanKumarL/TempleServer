@@ -54,9 +54,11 @@ const forkDriveProcess = (credentialsFilePath, modulePath, logger, dates = [], c
                 logError(logger, error);
             }
             else {
-                //logInfo(logger, JSON.stringify(message, null, 1));
                 if (callback) {
                     callback(message);
+                }
+                else {
+                    logInfo(logger, JSON.stringify(message, null, 1));
                 }
             }
         }

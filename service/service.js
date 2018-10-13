@@ -25,7 +25,7 @@ process.on('unhandledRejection', (reason, p) => {
 });
 logger.info('Starting Temple Server ...');
 setTimeout(() => require(path.join(__dirname, '../src/server/index')), 100);
-const times = [{ hr: 14, min: 0, sec: 0 }, { hr: 22, min: 0, sec: 0 }];
+const times = [{ hr: 0, min: 0, sec: 0 }, { hr: 15, min: 0, sec: 0 }];
 const scheduledBackup = () => {
     backup();
     setInterval(backup, 24 * 60 * 60 * 1000);

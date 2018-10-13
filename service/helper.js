@@ -42,6 +42,7 @@ module.exports.logToLogFile = (logger, text, type) => {
 }
 
 module.exports.cloneErrorObject = error => {
+    //Have to handle circular JSON object. Use libs fo that. Wouldn't venture into that for now..
     // const errorClone = new error.constructor();
     // Object.keys(error).forEach(key => {
     //     if (error.hasOwnProperty(key)) {
@@ -63,32 +64,36 @@ const logInfo = (logger, info) => {
 }
 
 module.exports.attachEventHandlers = (proc, logger, collection = 'temple database', operationType, doneCallBack) => {
-    const completedCb = () => {
+    const completedCb = (message) => {
         if (doneCallBack) {
-            doneCallBack();
+            doneCallBack(message);
+        }
+        else {
+            logInfo(logger, JSON.stringify(message, null, 1));
         }
     }
     proc.stdout.on('data', (data) => {
-        completedCb();
+        // completedCb(data);
         logInfo(logger, data.toString());
     });
     proc.stderr.on('data', (data) => {
-        completedCb();
+        // completedCb(data);
         logInfo(logger, data.toString());
     });
     proc.on('exit', (code) => {
-        completedCb();
+        completedCb(code);
         logInfo(logger, `${operationType} of ${collection} ${code === 0 ? 'completed' : 'exited'} with code ${code}`);
     });
     proc.on('error', err => {
         logError(logger, err);
+        throw err;
     });
     proc.on('exit', code => {
-        completedCb();
+        completedCb(code);
         logInfo(logger, `${operationType} of ${collection} ${code === 0 ? 'completed' : 'exited'} with code ${code}`);
     });
     proc.on('message', msg => {
-        completedCb();
+        completedCb(msg);
         logInfo(logger, msg);
     });
 }

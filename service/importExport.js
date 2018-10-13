@@ -17,36 +17,38 @@ const credentialsFilePath = __dirname + '/assets/client_id.json';
 
 //#region Backup
 module.exports.backup = (dates = [getCurrentDate()]) => {
-    // let isBackupSetup = false;
-    
-    //Check for backup collection if it exists
-    // backupModel.estimatedDocumentCount((err, count) => {
-    //     isBackupSetup = count > 0;
-    Promise.all([Constants.Transactions, Constants.Users, Constants.poojaCollection].map(collection => {
-        return new Promise(resolve => {
-            const backupFilePath = `${dirName}/backup_${collection}_${dates.join('_')}.json`;
-            const exportargs = ['-d', 'temple', '-c', collection, '--jsonArray',
-                '-o', backupFilePath];
-            //If already present
-            // if (isBackupSetup) {
-            exportargs.push('-q', `"{createdDate: {$in: ['${dates}']}}"`);
-            // }
-            const backupProcess = spawn('mongoexport', exportargs);
-            const onBackupComplete = () => resolve(backupFilePath);
-            attachEventHandlers(backupProcess, logger, collection, 'Backup', onBackupComplete);
-        });
-    })).then((backupFilePaths) => {
-        //gDriveBackup
-        authAndForkDriveProcess(credentialsFilePath, logger, __dirname + '\\uploadBackup.js', dates);
+    let isBackupSetup = false;
 
-        backupFilePaths.forEach(backupFilePath => new backupModel({ createdDate: new Date(), backupFilePath })
-            .save(err => {
-                if (err) {
-                    logError(logger, `Error occured while saving to backup collection : ${err}`);
+    //Check for backup collection if it exists
+    backupModel.estimatedDocumentCount((err, count) => {
+        isBackupSetup = count > 0;
+        Promise.all([Constants.Transactions, Constants.Users, Constants.poojaCollection].map(collection => {
+            return new Promise(resolve => {
+                const backupFilePath = `${dirName}/backup_${collection}_${dates.join('_')}.json`;
+                const exportargs = ['-d', 'temple', '-c', collection, '--jsonArray',
+                    '-o', backupFilePath];
+                //If already present
+                if (isBackupSetup) {
+                    exportargs.push('-q', `"{createdDate: {$in: ['${dates}']}}"`);
                 }
-            }));
+                const backupProcess = spawn('mongoexport', exportargs);
+                const onBackupComplete = () => resolve(backupFilePath);
+                attachEventHandlers(backupProcess, logger, collection, 'Backup', onBackupComplete);
+            });
+        })).then((backupFilePaths) => {
+            //gDriveBackup
+            authAndForkDriveProcess(credentialsFilePath, logger, __dirname + '\\uploadBackup.js', dates);
+
+            backupFilePaths.forEach(backupFilePath => new backupModel({ createdDate: new Date(), backupFilePath })
+                .save(err => {
+                    if (err) {
+                        logError(logger, `Error occured while saving to backup collection : ${err}`);
+                    }
+                }));
+        }).catch(error => {
+            logError(logger, error);
+        });
     });
-    // });
 }
 //#endregion
 
