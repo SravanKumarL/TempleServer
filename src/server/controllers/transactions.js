@@ -1,4 +1,5 @@
-const { Constants, parseDate, getPaginationOptions, populateCount, castToBoolean } = require('../constants/constants');
+const { Constants, parseDate, getPaginationOptions,
+  populateCount, castToBoolean, getDateDifference, getDate } = require('../constants/constants');
 const { reportMapping, getModelProps } = require('../constants/constants');
 const Transaction = require('../models/transactions');
 const uuidv1 = require('uuid/v1');
@@ -27,6 +28,10 @@ exports.addTransaction = function (req, res, next) {
     selectedDates.forEach(x => parseDate(x));
   else
     selectedDates = parseDate(selectedDates);
+  const now = new Date();
+  if (selectedDates.some(selDate => getDateDifference(getDate(selDate), now) > 0)) {
+    return res.status(422).send({ error: 'Invalid date selected' });
+  }
   //Validate different cases
   if (!names || !pooja || !phoneNumber) {
     return res.status(422).send({ error: 'You must provide phone number names and pooja' });

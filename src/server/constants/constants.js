@@ -1,3 +1,4 @@
+const moment = require('moment');
 const constants = {
     delete: 'delete',
     add: 'add',
@@ -45,6 +46,7 @@ const getDate = (dateString) => {
     const parts = dateString.split('-');
     return new Date(Date.parse(`${parts[2]}-${parts[1]}-${parts[0]}`));
 }
+module.exports.getDate = getDate;
 module.exports.getCurrentDate = getCurrentDate;
 module.exports.parseDate = (date) => {
     try {
@@ -90,3 +92,9 @@ module.exports.populateCount = (fetchCount = false, returnObj = {}, totalCount =
 module.exports.castToBoolean = (value, defCast) => value === 'true' ? true : (value === 'false' ? false : defCast);
 module.exports.convertToProperCase = stringValue =>
     stringValue.split(' ').map(val => val[0].toUpperCase() + val.toLowerCase().slice(1)).join(' ');
+const toISODateFormat = date => date.toISOString().split('T')[0];
+module.exports.getDateDifference = (from, to) => {
+    const momentFrom = moment(toISODateFormat(from));
+    const momentTo = moment(toISODateFormat(to));
+    return momentTo.diff(momentFrom, 'days');
+}
