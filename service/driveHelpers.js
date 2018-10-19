@@ -12,7 +12,8 @@ module.exports.getDriveClient = (credentialsFilePath) => {
     return google.drive({ version: 'v3', auth: authClient });
 }
 
-module.exports.authAndForkDriveProcess = (credentialsFilePath, logger, modulePath, dates, onProcCompleteCb = (() => { })) => {
+module.exports.authAndForkDriveProcess = (credentialsFilePath, logger, modulePath, dates,
+    onProcCompleteCb = (() => { })) => {
     authorizeGAccount(credentialsFilePath, logger).then(browser => {
         if (browser && browser !== null) {
             browser._process.on('close', (code, signal) => {
@@ -54,8 +55,8 @@ const forkDriveProcess = (credentialsFilePath, modulePath, logger, dates = [], c
                 logError(logger, error);
             }
             else {
-                if (callback) {
-                    callback(message);
+                if (callback && 'done' in message) {
+                    callback(message.done);
                 }
                 else {
                     logInfo(logger, JSON.stringify(message, null, 1));
@@ -68,3 +69,36 @@ const forkDriveProcess = (credentialsFilePath, modulePath, logger, dates = [], c
     });
     return driveProc;
 }
+
+const searchDrive = (drive, query = '', allFiles = [], errCb, doneCb) => {
+    drive.files.list({ q: query }, (error, response) => {
+        if (error) {
+            errCb(error);
+        }
+        const { nextPageToken, files } = response.data;
+        if (nextPageToken) {
+            searchDrive(drive, { ...query, nextPageToken }, [...allFiles, ...files], errCb, doneCb);
+        }
+        else {
+            doneCb([...allFiles, ...files]);
+        }
+    });
+}
+
+const getFilesFilterClause = (dates = [], folderId = '', additionalFilterClause = '') => {
+    let dateFilterClause = '';
+    if (dates.length > 0) {
+        dateFilterClause += '(';
+        dates.forEach(date => {
+            date.replace('-', '\\-');
+            dateFilterClause += `name contains '"${date}"' or `;
+        });
+        dateFilterClause = dateFilterClause.slice(0, dateFilterClause.lastIndexOf(' or '));
+        dateFilterClause += ') and ';
+    }
+    return `${folderId !== '' ? `'${folderId}' in parents and ` : ''}(${dateFilterClause}trashed = false)` +
+        (additionalFilterClause !== '' ? ` and ${additionalFilterClause}` : '');
+}
+
+module.exports.getFilesFilterClause = getFilesFilterClause;
+module.exports.searchDrive = searchDrive;

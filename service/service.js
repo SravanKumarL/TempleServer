@@ -1,8 +1,12 @@
 const path = require('path');
 const { backup } = require(path.join(__dirname, './importExport'));
 const logger = require(__dirname + path.sep + 'helper').getLogger('serviceLog.log');
+let server = null;
 const stopService = (code) => {
     logger.fatal('Stopping Temple Server ...');
+    if (server !== null) {
+        server.close();
+    }
     logger.fatal('Process exited with code ' + code);
 };
 process.on('exit', (code) => stopService(code));
@@ -24,12 +28,18 @@ process.on('unhandledRejection', (reason, p) => {
     process.exit(1);
 });
 logger.info('Starting Temple Server ...');
-setTimeout(() => require(path.join(__dirname, '../src/server/index')), 100);
+setTimeout(() => server = require(path.join(__dirname, '../src/server/index')), 100);
 const times = [{ hr: 0, min: 0, sec: 0 }, { hr: 15, min: 0, sec: 0 }];
 const scheduledBackup = () => {
     backup();
     setInterval(backup, 24 * 60 * 60 * 1000);
 }
-times.forEach(time => setTimeout(scheduledBackup,
-    new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), time.hr, time.min, time.sec, 0)
-        .getTime() - Date.now()));
+times.forEach(time => {
+    const getScheduledTime = (nextDay = false) => new Date(new Date().getFullYear(), new Date().getMonth(),
+        (new Date().getDate() + (nextDay ? 1 : 0)), time.hr, time.min, time.sec, 0).getTime() - Date.now();
+    let scheduledTime = getScheduledTime();
+    if (scheduledTime < 0) {
+        scheduledTime = getScheduledTime(true);
+    }
+    setTimeout(scheduledBackup, scheduledTime);
+});

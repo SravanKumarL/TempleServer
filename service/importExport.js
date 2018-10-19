@@ -24,7 +24,7 @@ module.exports.backup = (dates = [getCurrentDate()]) => {
         isBackupSetup = count > 0;
         Promise.all([Constants.Transactions, Constants.Users, Constants.poojaCollection].map(collection => {
             return new Promise(resolve => {
-                const backupFilePath = `${dirName}/backup_${collection}_${dates.join('_')}.json`;
+                const backupFilePath = `./${dirName}/backup_${collection}_${dates.join('_')}.json`;
                 const exportargs = ['-d', 'temple', '-c', collection, '--jsonArray',
                     '-o', backupFilePath];
                 //If already present
@@ -35,16 +35,19 @@ module.exports.backup = (dates = [getCurrentDate()]) => {
                 const onBackupComplete = () => resolve(backupFilePath);
                 attachEventHandlers(backupProcess, logger, collection, 'Backup', onBackupComplete);
             });
-        })).then((backupFilePaths) => {
+        })).then(backupFilePaths => {
             //gDriveBackup
-            authAndForkDriveProcess(credentialsFilePath, logger, __dirname + '\\uploadBackup.js', dates);
-
-            backupFilePaths.forEach(backupFilePath => new backupModel({ createdDate: new Date(), backupFilePath })
-                .save(err => {
-                    if (err) {
-                        logError(logger, `Error occured while saving to backup collection : ${err}`);
-                    }
-                }));
+            authAndForkDriveProcess(credentialsFilePath, logger, __dirname + '\\uploadBackup.js', dates,
+                filePaths => {
+                    if (filePaths.length > 0)
+                        filePaths.forEach(backupFilePath =>
+                            new backupModel({ createdDate: new Date(), backupFilePath }).save(err => {
+                                if (err) {
+                                    logError(logger, `Error occured while saving to backup collection : ${err}`);
+                                }
+                            })
+                        );
+                });
         }).catch(error => {
             logError(logger, error);
         });

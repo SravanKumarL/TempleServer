@@ -1,4 +1,4 @@
-const { getDriveClient } = require('./driveHelpers');
+const { getDriveClient, searchDrive, getFilesFilterClause } = require('./driveHelpers');
 const { cloneErrorObject } = require('../src/server/constants/constants');
 const fs = require('fs');
 const path = require('path');
@@ -36,39 +36,14 @@ process.on('message', messageObj => {
                         });
                 });
             })).then(files => {
-                process.send({ files });
+                process.send({ done: files });
             }).catch(error => {
                 process.send({ error: cloneErrorObject(error) });
             });
 
-            getFilesInFolder(drive, { q: getFilterClause(dates, response.data.files[0].id) }, [],
+            searchDrive(drive, getFilesFilterClause(dates, response.data.files[0].id), [],
                 errCb, doneCb);
         }
     });
 });
 
-const getFilesInFolder = (drive, query, allFiles = [], errCb, doneCb) => {
-    drive.files.list(query, (error, response) => {
-        if (error) {
-            errCb(error);
-        }
-        const { nextPageToken, files } = response.data;
-        if (nextPageToken) {
-            getFilesInFolder(drive, { ...query, nextPageToken }, [...allFiles, ...files], errCb, doneCb);
-        }
-        else {
-            doneCb(allFiles);
-        }
-    });
-}
-
-const getFilterClause = (dates, folderId) => {
-    let dateFilterClause = '';
-    if (dates && dates.length > 0) {
-        dateFilterClause += ' and (';
-        dates.forEach(date => dateFilterClause += `name contains '${date}' or `);
-        dateFilterClause = dateFilterClause.slice(0, dateFilterClause.lastIndexOf(' or '));
-        dateFilterClause += ')';
-    }
-    return `'${folderId}' in parents${dateFilterClause}`;
-}

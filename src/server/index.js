@@ -40,3 +40,4 @@ server.listen(port);
 server.on('error', error => logToConsoleAndLogFile(error, logType.error));
 server.on('close', () => logToConsoleAndLogFile('Closing Temple Server', logType.fatal));
 server.on('listening', () => logToConsoleAndLogFile('Server listening on port:' + port));
+module.exports = server;
