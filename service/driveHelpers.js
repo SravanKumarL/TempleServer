@@ -38,7 +38,7 @@ module.exports.authAndForkDriveProcess = (credentialsFilePath, logger, modulePat
 const forkDriveProcess = (credentialsFilePath, modulePath, logger, dates = [], callback) => {
     // inspect is for debugging child process
     const driveProc = fork(modulePath, [], {
-        stdio: ["pipe", "pipe", "pipe", "ipc"], execArgv: ['--inspect-brk=9229']
+        stdio: ["pipe", "pipe", "pipe", "ipc"]/* , execArgv: ['--inspect-brk=9229'] */
     });
     driveProc.send({ credentialsFilePath, dates }, err => {
         if (err) {
