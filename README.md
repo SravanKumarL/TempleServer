@@ -1,2 +1,1 @@
-# TempleServer
 Code for TempleServer
